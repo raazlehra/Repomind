@@ -1,0 +1,27 @@
+[
+  {
+    "repository": "python_app",
+    "task": "Fix authentication refresh token bug",
+    "expected_files": ["app/auth.py", "app/routes.py", "tests/test_auth.py"]
+  },
+  {
+    "repository": "mixed_app",
+    "task": "Modify API payment validation",
+    "expected_files": ["backend/api.py", "backend/models.py", "backend/service.py"]
+  },
+  {
+    "repository": "mixed_app",
+    "task": "Change dashboard payment component",
+    "expected_files": ["frontend/src/Dashboard.tsx", "frontend/src/api.ts"]
+  },
+  {
+    "repository": "mixed_app",
+    "task": "Update database payment model",
+    "expected_files": ["backend/models.py", "backend/service.py"]
+  },
+  {
+    "repository": "mixed_app",
+    "task": "Locate tests for payment service",
+    "expected_files": ["tests/test_payment.py", "backend/service.py"]
+  }
+]

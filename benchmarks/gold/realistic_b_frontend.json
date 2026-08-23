@@ -1,0 +1,7 @@
+{
+  "Fix dashboard showing stale data": {
+    "primary": ["frontend/src/components/Dashboard.tsx", "frontend/src/api.ts"],
+    "secondary": [],
+    "tests": []
+  }
+}

@@ -1,0 +1,100 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import Any
+
+from mcp.server.mcpserver import MCPServer
+
+from repomind import __version__, services
+
+ToolHandler = Callable[..., dict[str, Any]]
+
+
+INSTRUCTIONS = """RepoMind is a local-first static-analysis discovery accelerator.
+Use repomind_context at level 1 first, inspect actual source before edits, and ask
+for deeper symbols, callers, dependencies, impact, or snippets only when needed."""
+
+
+def create_server(debug: bool = False) -> MCPServer:
+    server = MCPServer(
+        name="repomind",
+        title="RepoMind",
+        version=__version__,
+        instructions=INSTRUCTIONS,
+        debug=debug,
+    )
+
+    def safe(handler: ToolHandler, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        try:
+            return handler(*args, **kwargs)
+        except Exception as exc:  # MCP tool boundary: convert normal failures to structured data.
+            return services.error_payload(exc, debug=debug)
+
+    @server.tool()
+    def repomind_status(repository: str) -> dict[str, Any]:
+        """Check whether a repository has a valid RepoMind index."""
+        return safe(services.status, repository)
+
+    @server.tool()
+    def repomind_context(
+        repository: str,
+        task: str,
+        budget: int | None = None,
+        level: int = 1,
+    ) -> dict[str, Any]:
+        """Return structured task-aware context from the existing RepoMind retriever."""
+        return safe(services.context, repository, task, budget, level)
+
+    @server.tool()
+    def repomind_symbol(repository: str, symbol: str) -> dict[str, Any]:
+        """Return matching symbols with file, location, signature, type, and relationships."""
+        return safe(services.symbol, repository, symbol)
+
+    @server.tool()
+    def repomind_callers(repository: str, symbol: str) -> dict[str, Any]:
+        """Return resolvable incoming call relationships for a symbol."""
+        return safe(services.symbol_callers, repository, symbol)
+
+    @server.tool()
+    def repomind_dependencies(repository: str, target: str) -> dict[str, Any]:
+        """Return outgoing structural dependencies for a file or symbol target."""
+        return safe(services.structural_dependencies, repository, target)
+
+    @server.tool()
+    def repomind_impact(repository: str, target: str) -> dict[str, Any]:
+        """Estimate dependents, affected tests, routes, and UI impact for a target."""
+        return safe(services.change_impact, repository, target)
+
+    @server.tool()
+    def repomind_snippets(
+        repository: str,
+        target: str,
+        line_bound: int | None = None,
+        token_bound: int | None = None,
+    ) -> dict[str, Any]:
+        """Return bounded source snippets for an indexed symbol or file target."""
+        return safe(services.bounded_snippets, repository, target, line_bound, token_bound)
+
+    @server.tool()
+    def repomind_refresh(repository: str) -> dict[str, Any]:
+        """Refresh changed files incrementally and return index health."""
+        return safe(services.refresh, repository)
+
+    @server.tool()
+    def repomind_map(
+        repository: str,
+        depth: int | None = None,
+        include_symbols: bool = False,
+    ) -> dict[str, Any]:
+        """Return the compact repository map."""
+        return safe(services.repository_map, repository, depth, include_symbols)
+
+    return server
+
+
+def run_stdio(debug: bool = False) -> None:
+    create_server(debug=debug).run("stdio")
+
+
+if __name__ == "__main__":
+    run_stdio()

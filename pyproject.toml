@@ -1,0 +1,82 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "repomind"
+version = "1.0.0"
+description = "Local-first persistent code context engine for AI coding agents"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{name = "RepoMind contributors"}]
+keywords = ["code-index", "static-analysis", "developer-tools", "ai-agents"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+dependencies = [
+  "mcp>=2,<3",
+]
+
+[project.optional-dependencies]
+watch = ["watchdog>=4.0"]
+treesitter = [
+  "tree-sitter>=0.23",
+  "tree-sitter-javascript>=0.23",
+  "tree-sitter-typescript>=0.23",
+]
+dev = [
+  "build>=1.2",
+  "mypy>=1.11",
+  "pytest>=8.2",
+  "ruff>=0.6",
+  "watchdog>=4.0",
+  "tree-sitter>=0.23",
+  "tree-sitter-javascript>=0.23",
+  "tree-sitter-typescript>=0.23",
+]
+
+[project.scripts]
+repomind = "repomind.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["repomind*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = ["tests/fixtures"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["repomind"]
+
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = [
+  ".venv",
+  "venv",
+  ".repomind",
+  "build",
+  "dist",
+  "repomind.egg-info",
+  "tests/fixtures",
+  "benchmarks/real_repos",
+  "watchdog",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["E501"]

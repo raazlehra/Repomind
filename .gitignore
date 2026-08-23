@@ -1,0 +1,35 @@
+# RepoMind local index
+.repomind/
+
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Tooling and build output
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+coverage/
+.coverage
+
+# Local environment and IDE files
+.env
+.env.*
+.idea/
+.vscode/
+*.log
+
+# Temporary benchmark outputs
+/benchmark.json
+/benchmark-*.json
+/benchmark_results/
+/benchmark-output/
+/benchmarks/real_repos/
+/tmp/

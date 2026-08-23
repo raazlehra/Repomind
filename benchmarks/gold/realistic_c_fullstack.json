@@ -1,0 +1,14 @@
+{
+  "Change dashboard API response": {
+    "primary": [
+      "backend/routes.py",
+      "backend/services.py",
+      "backend/models.py",
+      "frontend/src/apiClient.ts"
+    ],
+    "secondary": [
+      "frontend/src/components/Dashboard.tsx"
+    ],
+    "tests": []
+  }
+}
