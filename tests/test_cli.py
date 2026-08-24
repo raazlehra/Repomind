@@ -61,6 +61,18 @@ def test_cli_audit_writes_markdown_and_json(python_repo: Path, tmp_path: Path, c
     assert markdown_path.stat().st_size > 0
     assert json_path.stat().st_size > 0
     assert "# RepoMind Repository Audit" in markdown
+    sections = [
+        "## Executive Summary",
+        "## Architecture Detected",
+        "## Release Risks",
+        "## Test/Readiness Notes",
+        "## Suggested AI Context Pack",
+        "## Recommended Next Actions",
+    ]
+    positions = [markdown.index(section) for section in sections]
+    assert positions == sorted(positions)
+    assert "### API Routes" in markdown
+    assert "### Likely Test Commands" in markdown
     assert "POST `/login`" in markdown
     assert data["summary"]["parse_errors"] == 0
     assert data["summary"]["routes"] >= 2
@@ -195,7 +207,7 @@ def provision_parent(parent_email: str):
         "parent-provisioning-email-mismatch",
         "missing-frontend-critical-flow-tests",
     } <= risk_ids
-    assert "Risk Findings" in markdown
+    assert "## Release Risks" in markdown
     assert "SQLite-only month filtering" in markdown
     assert "Frontend stores bearer-token material in localStorage" in markdown
     assert "dev-secret" not in markdown

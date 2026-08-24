@@ -100,10 +100,11 @@ Most read commands accept `--format text`, `--format markdown`, or `--format jso
 
 ```bash
 repomind audit . --output reports/audit.md --json reports/audit.json
+repomind audit <repo> --output <file> --json <file>
 repomind audit . --task "fix authentication route" --output reports/auth-audit.md
 ```
 
-The report includes indexed file counts, detected architecture, important files, API routes, test files, likely test commands, structured risk findings, short risk notes, and a suggested AI context pack. Markdown output is intended for human review; JSON output carries the same findings in a deterministic artifact suitable for tracking or comparison.
+The Markdown report is formatted for human review with an executive summary, detected architecture, release risks, test/readiness notes, suggested AI context pack, and recommended next actions. JSON output carries the same deterministic audit data for tracking or comparison.
 
 Risk findings are static, local heuristics based on indexed files and bounded source reads. The initial paid-audit checks cover SQLite-specific SQLAlchemy month filters, weak production secret defaults, wildcard CORS, exposed provisioning or activation token flows, frontend bearer tokens in `localStorage`, parent provisioning email mismatch hotspots, and missing frontend E2E/component coverage for critical browser flows. Use `--no-refresh` to generate a report from the existing index without refreshing changed files.
 

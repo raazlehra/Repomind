@@ -102,54 +102,83 @@ def build_audit_report(database: IndexDatabase, task: str | None = None) -> dict
 
 
 def render_audit_markdown(report: dict[str, Any]) -> str:
+    summary = report["summary"]
     lines = [
         "# RepoMind Repository Audit",
         "",
         f"Repository: `{report['repository']}`",
         f"RepoMind version: `{report['repomind_version']}`",
         "",
-        "## Summary",
+        "## Executive Summary",
+        "",
+        "| Area | Value |",
+        "|---|---:|",
+        f"| Indexed files | {summary['indexed_files']} |",
+        f"| Symbols | {summary['symbols']} |",
+        f"| Imports | {summary['imports']} |",
+        f"| Dependencies | {summary['dependencies']} |",
+        f"| API routes | {summary['routes']} |",
+        f"| Parse errors | {summary['parse_errors']} |",
+        "",
+        f"- Release risk posture: {_release_risk_posture(report['risk_findings'])}",
+        f"- Primary languages: {_count_names(report['languages'])}",
+        f"- Detected architecture signals: {len(report['architecture'])}",
+        f"- Suggested context files: {len(report['context_pack']['relevant_files'])}",
+        "",
+        "## Architecture Detected",
     ]
-    summary = report["summary"]
-    lines.extend(
-        [
-            f"- Indexed files: {summary['indexed_files']}",
-            f"- Symbols: {summary['symbols']}",
-            f"- Imports: {summary['imports']}",
-            f"- Dependencies: {summary['dependencies']}",
-            f"- API routes: {summary['routes']}",
-            f"- Parse errors: {summary['parse_errors']}",
-        ]
-    )
-    _append_counts(lines, "Languages", report["languages"])
-    _append_counts(lines, "File Purposes", report["purposes"])
+    _append_counts(lines, "Languages", report["languages"], level=3)
+    _append_counts(lines, "File Purposes", report["purposes"], level=3)
     _append_records(
         lines,
-        "Detected Architecture",
+        "Stack Evidence",
         report["architecture"],
         lambda item: f"{item['category']}: {item['name']} (evidence: `{item['evidence']}`)",
+        level=3,
     )
     _append_records(
         lines,
         "Important Files",
         report["important_files"],
         lambda item: f"`{item['path']}` ({item['purpose']}, {item['language']}) - {item['reason']}",
+        level=3,
     )
     _append_records(
         lines,
         "API Routes",
         report["api_routes"],
         lambda item: f"{item['method']} `{item['path']}` -> `{item['handler']}` in `{item['file']}`",
+        level=3,
     )
-    _append_records(lines, "Test Files", report["test_files"], lambda item: f"`{item}`")
-    _append_records(lines, "Likely Test Commands", report["test_commands"], lambda item: f"`{item}`")
-    _append_records(lines, "Risk Findings", report["risk_findings"], _render_risk_finding)
-    _append_records(lines, "Risk Notes", report["risk_notes"], lambda item: str(item))
+    _append_records(lines, "Release Risks", report["risk_findings"], _render_risk_finding)
+    lines.extend(("", "## Test/Readiness Notes"))
+    _append_records(lines, "Test Files", report["test_files"], lambda item: f"`{item}`", level=3)
+    _append_records(
+        lines,
+        "Likely Test Commands",
+        report["test_commands"],
+        lambda item: f"`{item}`",
+        level=3,
+    )
+    _append_records(lines, "Risk Notes", report["risk_notes"], lambda item: str(item), level=3)
+    _append_records(
+        lines,
+        "Parse Errors",
+        report["parse_errors"],
+        lambda item: f"`{item['path']}` - {item['error']}",
+        level=3,
+    )
     _append_records(
         lines,
         "Suggested AI Context Pack",
         report["context_pack"]["relevant_files"],
         lambda item: f"`{item['path']}` ({item['purpose']}; score {item['score']})",
+    )
+    _append_records(
+        lines,
+        "Recommended Next Actions",
+        _recommended_actions(report),
+        lambda item: str(item),
     )
     lines.extend(("", f"Source authority: {report['source_authority']}"))
     return "\n".join(lines).strip() + "\n"
@@ -764,8 +793,54 @@ def _render_risk_finding(item: dict[str, Any]) -> str:
     )
 
 
-def _append_counts(lines: list[str], title: str, items: list[dict[str, Any]]) -> None:
-    lines.extend(("", f"## {title}"))
+def _release_risk_posture(findings: list[dict[str, Any]]) -> str:
+    if not findings:
+        return "No structured release risks detected by local heuristics."
+    counts = {severity: 0 for severity in ("critical", "high", "medium", "low")}
+    for finding in findings:
+        severity = str(finding["severity"])
+        if severity in counts:
+            counts[severity] += 1
+    parts = [
+        f"{count} {severity}"
+        for severity, count in counts.items()
+        if count
+    ]
+    return ", ".join(parts)
+
+
+def _count_names(items: list[dict[str, Any]], limit: int = 4) -> str:
+    names = [str(item["name"]) for item in items[:limit]]
+    if not names:
+        return "none detected"
+    if len(items) > limit:
+        names.append(f"{len(items) - limit} more")
+    return ", ".join(names)
+
+
+def _recommended_actions(report: dict[str, Any]) -> list[str]:
+    actions: list[str] = []
+    findings = report["risk_findings"]
+    if findings:
+        actions.append("Review and triage each release risk against the authoritative source files.")
+        if any(str(item["severity"]) in {"critical", "high"} for item in findings):
+            actions.append("Resolve critical and high findings before release candidate sign-off.")
+    if report["summary"]["parse_errors"]:
+        actions.append("Fix parse errors or force reindex before relying on symbol and route coverage.")
+    if report["test_commands"]:
+        actions.append("Run the likely test commands listed above and attach results to release notes.")
+    if report["context_pack"]["relevant_files"]:
+        actions.append("Start implementation review with the suggested AI context pack files.")
+    if not actions:
+        actions.append("No immediate action detected; use the context pack for focused source review.")
+    return actions
+
+
+def _append_counts(
+    lines: list[str], title: str, items: list[dict[str, Any]], level: int = 2
+) -> None:
+    heading = "#" * level
+    lines.extend(("", f"{heading} {title}"))
     if not items:
         lines.append("- none")
         return
@@ -778,8 +853,10 @@ def _append_records(
     title: str,
     items: list[Any],
     render_item: Callable[[Any], str],
+    level: int = 2,
 ) -> None:
-    lines.extend(("", f"## {title}"))
+    heading = "#" * level
+    lines.extend(("", f"{heading} {title}"))
     if not items:
         lines.append("- none")
         return
