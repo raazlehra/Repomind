@@ -106,6 +106,8 @@ repomind audit . --task "fix authentication route" --output reports/auth-audit.m
 
 The Markdown report is formatted for human review with an executive summary, detected architecture, release risks, test/readiness notes, suggested AI context pack, and recommended next actions. JSON output carries the same deterministic audit data for tracking or comparison.
 
+See [docs/sample-audit-report.md](docs/sample-audit-report.md) for a sanitized public sample report.
+
 Risk findings are static, local heuristics based on indexed files and bounded source reads. The initial paid-audit checks cover SQLite-specific SQLAlchemy month filters, weak production secret defaults, wildcard CORS, exposed provisioning or activation token flows, frontend bearer tokens in `localStorage`, parent provisioning email mismatch hotspots, and missing frontend E2E/component coverage for critical browser flows. Use `--no-refresh` to generate a report from the existing index without refreshing changed files.
 
 ### Context budgets
