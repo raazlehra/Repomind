@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import traceback
 from collections.abc import Sequence
 from pathlib import Path
 
 from repomind import __version__
+from repomind.audit import build_audit_report, render_audit_markdown
 from repomind.config import Config
 from repomind.database import IndexDatabase
 from repomind.doctor import run_doctor
@@ -71,6 +73,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     context_parser.add_argument("--level", type=int, choices=(1, 2, 3), default=1)
     context_parser.add_argument("--format", choices=_FORMATS, default="text")
+
+    audit_parser = subparsers.add_parser(
+        "audit", help="generate a repository audit report and optional JSON output"
+    )
+    audit_parser.add_argument("path", nargs="?", default=".")
+    audit_parser.add_argument("--task", help="task to use for the suggested AI context pack")
+    audit_parser.add_argument("--output", help="write Markdown audit report to this path")
+    audit_parser.add_argument("--json", dest="json_output", help="write JSON audit report to this path")
+    audit_parser.add_argument(
+        "--no-refresh", action="store_true", help="use the existing index without refreshing"
+    )
 
     for name, help_text in (
         ("symbol", "show matching symbol metadata"),
@@ -197,6 +210,35 @@ def _dispatch(args: argparse.Namespace) -> int:
                 budget,
             )
         print(rendered, end="")
+        return 0
+    if command == "audit":
+        root = resolve_repository(Path(args.path), require_index=False)
+        index_path = root / ".repomind" / "index.sqlite3"
+        if not index_path.is_file():
+            Indexer(root).initialize(progress=_progress_callback())
+        elif not bool(args.no_refresh):
+            Indexer(root).refresh(progress=_progress_callback())
+        with IndexDatabase(root) as database:
+            report = build_audit_report(database, task=args.task)
+        markdown = render_audit_markdown(report)
+        output_path = Path(args.output) if args.output else None
+        json_output_path = Path(args.json_output) if args.json_output else None
+        if output_path is not None:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(markdown, encoding="utf-8")
+        if json_output_path is not None:
+            json_output_path.parent.mkdir(parents=True, exist_ok=True)
+            json_output_path.write_text(json.dumps(report, indent=2, sort_keys=False), encoding="utf-8")
+        if output_path is None:
+            print(markdown, end="")
+        else:
+            data = {
+                "audit": "written",
+                "repository": str(root),
+                "output": str(output_path),
+                "json": str(json_output_path) if json_output_path else None,
+            }
+            print(render_records(data, "text"), end="")
         return 0
     if command in {"symbol", "callers", "dependencies", "impact", "snippets"}:
         root = resolve_repository(Path(args.repository))
