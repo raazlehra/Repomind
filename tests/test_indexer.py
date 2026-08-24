@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import codecs
 import os
 from pathlib import Path
 
@@ -61,6 +62,58 @@ def test_mtime_only_change_not_reparsed(python_repo: Path) -> None:
     result = Indexer(python_repo).refresh()
     assert result.parsed_files == 0
     assert result.changes.total == 0
+
+
+def test_incremental_refresh_preserves_indexed_bom_file(tmp_path: Path) -> None:
+    source = tmp_path / "api.py"
+    source.write_bytes(
+        codecs.BOM_UTF8
+        + b"""from fastapi import APIRouter
+router = APIRouter()
+
+@router.get("/students")
+def list_students() -> list[str]:
+    return []
+"""
+    )
+    initial = Indexer(tmp_path).initialize()
+
+    assert initial.parse_errors == 0
+    result = Indexer(tmp_path).refresh()
+
+    assert result.parsed_files == 0
+    assert result.changes.total == 0
+    with IndexDatabase(tmp_path) as database:
+        assert database.file_by_path("api.py") is not None
+        assert database.connection.execute(
+            "SELECT 1 FROM symbols WHERE name='list_students'"
+        ).fetchone()
+        route = database.connection.execute(
+            "SELECT method, path, handler FROM routes WHERE path='/students'"
+        ).fetchone()
+        assert route is not None
+        assert (route["method"], route["handler"]) == ("GET", "list_students")
+
+
+def test_modified_bom_file_is_reparsed(tmp_path: Path) -> None:
+    source = tmp_path / "service.py"
+    source.write_bytes(codecs.BOM_UTF8 + b"def before() -> str:\n    return 'before'\n")
+    Indexer(tmp_path).initialize()
+
+    source.write_bytes(codecs.BOM_UTF8 + b"def after_change() -> str:\n    return 'after'\n")
+    result = Indexer(tmp_path).refresh()
+
+    assert result.parse_errors == 0
+    assert result.parsed_files == 1
+    assert result.changes.modified == ("service.py",)
+    with IndexDatabase(tmp_path) as database:
+        assert database.connection.execute(
+            "SELECT 1 FROM symbols WHERE name='after_change'"
+        ).fetchone()
+        assert (
+            database.connection.execute("SELECT 1 FROM symbols WHERE name='before'").fetchone()
+            is None
+        )
 
 
 def test_only_modified_file_gets_new_index_timestamp(python_repo: Path) -> None:

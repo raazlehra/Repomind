@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import codecs
 from pathlib import Path
 
 from repomind.parsers import ParserRegistry
@@ -30,6 +31,65 @@ def login_route() -> str:
     assert any(edge.kind == "calls" and edge.target.endswith("login") for edge in result.edges)
     assert result.routes[0].path == "/login"
     assert result.routes[0].method == "POST"
+
+
+def test_python_registry_parses_normal_utf8_file(tmp_path: Path) -> None:
+    path = tmp_path / "normal.py"
+    path.write_text("def plain() -> str:\n    return 'ok'\n", encoding="utf-8")
+
+    result = ParserRegistry().parse(path, "normal.py", "python")
+
+    assert result.parse_error is None
+    assert any(symbol.name == "plain" for symbol in result.symbols)
+
+
+def test_python_registry_parses_utf8_bom_file(tmp_path: Path) -> None:
+    path = tmp_path / "bom.py"
+    path.write_bytes(codecs.BOM_UTF8 + b"class BomService:\n    pass\n")
+
+    result = ParserRegistry().parse(path, "bom.py", "python")
+
+    assert result.parse_error is None
+    assert any(symbol.name == "BomService" for symbol in result.symbols)
+
+
+def test_python_parser_only_removes_leading_bom() -> None:
+    result = PythonParser().parse(Path("middle_bom.py"), "middle_bom.py", "x = 1\n\ufeffy = 2\n")
+
+    assert result.parse_error
+    assert "U+FEFF" in result.parse_error
+
+
+def test_python_bom_file_extracts_imports(tmp_path: Path) -> None:
+    path = tmp_path / "imports.py"
+    path.write_bytes(codecs.BOM_UTF8 + b"from .models import User\nimport os as operating_system\n")
+
+    result = ParserRegistry().parse(path, "imports.py", "python")
+
+    assert result.parse_error is None
+    assert any(item.module == ".models" and item.name == "User" for item in result.imports)
+    assert any(item.module == "os" and item.alias == "operating_system" for item in result.imports)
+
+
+def test_python_bom_file_extracts_fastapi_routes(tmp_path: Path) -> None:
+    path = tmp_path / "routes.py"
+    path.write_bytes(
+        codecs.BOM_UTF8
+        + b"""from fastapi import APIRouter
+router = APIRouter()
+
+@router.get("/health")
+def health() -> dict[str, bool]:
+    return {"ok": True}
+"""
+    )
+
+    result = ParserRegistry().parse(path, "routes.py", "python")
+
+    assert result.parse_error is None
+    assert any(symbol.name == "health" for symbol in result.symbols)
+    assert result.routes[0].method == "GET"
+    assert result.routes[0].path == "/health"
 
 
 def test_python_syntax_error_is_nonfatal() -> None:

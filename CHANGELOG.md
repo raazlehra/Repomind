@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1
+
+Hotfix release for UTF-8 BOM Python parsing.
+
+- Fixed Python parsing for files encoded with a leading UTF-8 BOM (`EF BB BF`), preventing `SyntaxError: invalid non-printable character U+FEFF` parse errors during indexing.
+- Preserved existing raw-file hashing and incremental change detection behavior.
+- Added regression coverage for normal UTF-8 files, UTF-8 BOM files, import extraction, FastAPI route extraction, incremental refresh, and modified BOM files.
+
 ## 1.0.0
 
 Initial V1 release.

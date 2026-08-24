@@ -36,6 +36,8 @@ class PythonParser:
 
     def parse(self, path: Path, relative_path: str, source: str) -> ParseResult:
         result = ParseResult()
+        if source.startswith("\ufeff"):
+            source = source[1:]
         try:
             tree = ast.parse(source, filename=relative_path, type_comments=True)
         except (SyntaxError, ValueError) as exc:
