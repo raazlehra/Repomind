@@ -207,7 +207,83 @@ def provision_parent(parent_email: str):
         for finding in data["risk_findings"]
         if finding["id"] == "parent-provisioning-email-mismatch"
     )
+    assert parent_email["evidence"][0]["path"] == "backend/app/api/parents.py"
+    assert all(not item["path"].startswith("frontend/") for item in parent_email["evidence"])
     assert all(not item["path"].startswith("reports/") for item in parent_email["evidence"])
+
+
+def test_cli_audit_frontend_guardian_email_payload_alone_is_not_parent_mismatch_risk(
+    tmp_path: Path, capsys
+) -> None:  # type: ignore[no-untyped-def]
+    repo = tmp_path / "frontend_only_guardian_email"
+    (repo / "frontend" / "src").mkdir(parents=True)
+    (repo / "frontend" / "package.json").write_text(
+        json.dumps(
+            {
+                "dependencies": {"react": "latest"},
+                "devDependencies": {"typescript": "latest", "vite": "latest"},
+                "scripts": {"build": "vite build"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (repo / "frontend" / "src" / "students.tsx").write_text(
+        """export function saveStudent(form: { guardian_email: string }) {
+  return fetch("/api/students", {
+    method: "POST",
+    body: JSON.stringify({
+      guardian_email: undefined,
+      parent: { email: form.guardian_email || undefined },
+    }),
+  });
+}
+""",
+        encoding="utf-8",
+    )
+    json_path = tmp_path / "frontend-only-audit.json"
+
+    assert main(["audit", str(repo), "--json", str(json_path), "--output", str(tmp_path / "audit.md")]) == 0
+    capsys.readouterr()
+
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    risk_ids = {finding["id"] for finding in data["risk_findings"]}
+    assert "parent-provisioning-email-mismatch" not in risk_ids
+
+
+def test_cli_audit_parent_mismatch_validation_suppresses_parent_email_risk(
+    tmp_path: Path, capsys
+) -> None:  # type: ignore[no-untyped-def]
+    repo = tmp_path / "validated_parent_provisioning"
+    (repo / "backend" / "app" / "services").mkdir(parents=True)
+    (repo / "backend" / "tests").mkdir(parents=True)
+    (repo / "backend" / "app" / "services" / "provisioning.py").write_text(
+        """from fastapi import HTTPException
+
+def provision_account(entity_type: str, entity, email: str):
+    if entity_type == "parent":
+        if not entity.email:
+            raise HTTPException(status_code=422, detail="Parent record must have a guardian email before account provisioning")
+        if email != entity.email:
+            raise HTTPException(status_code=422, detail="Parent account email must match the guardian email on the parent record")
+    return {"email": email, "manual_invitation_token": "token"}
+""",
+        encoding="utf-8",
+    )
+    (repo / "backend" / "tests" / "test_parent_provisioning.py").write_text(
+        """def test_parent_provisioning_rejects_email_mismatch(client):
+    mismatch = client.post("/api/users/provision-parent", json={"parent_id": 1, "email": "child@example.com"})
+    assert mismatch.status_code == 422
+""",
+        encoding="utf-8",
+    )
+    json_path = tmp_path / "validated-parent-audit.json"
+
+    assert main(["audit", str(repo), "--json", str(json_path), "--output", str(tmp_path / "audit.md")]) == 0
+    capsys.readouterr()
+
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    risk_ids = {finding["id"] for finding in data["risk_findings"]}
+    assert "parent-provisioning-email-mismatch" not in risk_ids
 
 
 def test_cli_audit_does_not_report_test_secret_values_as_runtime_risk(

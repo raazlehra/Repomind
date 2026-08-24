@@ -473,11 +473,21 @@ def _detect_frontend_local_storage_token(
 def _detect_parent_provisioning_email_mismatch(
     findings: list[dict[str, Any]], source_files: list[dict[str, Any]]
 ) -> None:
+    provisioning_sources = _parent_email_provisioning_sources(source_files)
+    if not provisioning_sources:
+        return
+    if _has_parent_email_validation(source_files) or _has_parent_email_mismatch_tests(source_files):
+        return
     evidence = _collect_evidence(
-        source_files,
+        provisioning_sources,
         lambda line: (
             any(marker in line.lower() for marker in ("parent_email", "guardian_email"))
             and any(marker in line.lower() for marker in ("provision", "invite", "activation", "student"))
+        )
+        or (
+            "provision" in line.lower()
+            and "parent" in line.lower()
+            and "email" in line.lower()
         ),
     )
     if not evidence:
@@ -488,8 +498,8 @@ def _detect_parent_provisioning_email_mismatch(
             "medium",
             "account-provisioning",
             "Parent provisioning email fields need explicit mismatch validation.",
-            "Parent invite/provisioning code references parent email fields near student or activation "
-            "flow logic; this is a common place for wrong-recipient account setup.",
+            "Backend parent invite/provisioning code accepts or uses parent email fields, but RepoMind "
+            "did not find clear backend mismatch validation or mismatch tests.",
             evidence,
             "Validate that the invited parent email, created user email, and activation recipient "
             "match exactly, and add tests for mismatch/retry paths.",
@@ -592,6 +602,55 @@ def _runtime_config_sources(source_files: list[dict[str, Any]]) -> list[dict[str
     return [source for source in _runtime_sources(source_files) if _is_config_security_source(source)]
 
 
+def _parent_email_provisioning_sources(source_files: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    output: list[dict[str, Any]] = []
+    for source in _runtime_sources(source_files):
+        if _is_frontend_source(source):
+            continue
+        lower = str(source["lower"])
+        if (
+            "parent" in lower
+            and "email" in lower
+            and any(marker in lower for marker in ("provision", "invite", "activation"))
+        ):
+            output.append(source)
+    return output
+
+
+def _has_parent_email_validation(source_files: list[dict[str, Any]]) -> bool:
+    for source in _parent_email_provisioning_sources(source_files):
+        lower = str(source["lower"])
+        if any(
+            marker in lower
+            for marker in (
+                "email != entity.email",
+                "email != parent.email",
+                "email != record.email",
+                "must match",
+                "mismatch",
+                "guardian email before account provisioning",
+            )
+        ):
+            return True
+    return False
+
+
+def _has_parent_email_mismatch_tests(source_files: list[dict[str, Any]]) -> bool:
+    for source in source_files:
+        if not _is_test_source(source):
+            continue
+        lower = str(source["lower"])
+        if (
+            "parent" in lower
+            and "provision" in lower
+            and "email" in lower
+            and "422" in lower
+            and any(marker in lower for marker in ("mismatch", "must match", "guardian"))
+        ):
+            return True
+    return False
+
+
 def _is_test_source(source: dict[str, Any]) -> bool:
     if bool(source["is_test"]):
         return True
@@ -605,6 +664,11 @@ def _is_test_source(source: dict[str, Any]) -> bool:
         or ".test." in name
         or ".spec." in name
     )
+
+
+def _is_frontend_source(source: dict[str, Any]) -> bool:
+    path = _normalized_path(str(source["path"]))
+    return path.startswith("frontend/") or "/frontend/" in path
 
 
 def _is_config_security_source(source: dict[str, Any]) -> bool:
