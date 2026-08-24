@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "repomind"
-version = "2.0.0a1"
+version = "2.0.0b1"
 description = "Local-first persistent code context engine for AI coding agents"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -13,7 +13,7 @@ license-files = ["LICENSE"]
 authors = [{name = "RepoMind contributors"}]
 keywords = ["code-index", "static-analysis", "developer-tools", "ai-agents"]
 classifiers = [
-  "Development Status :: 5 - Production/Stable",
+  "Development Status :: 4 - Beta",
   "Environment :: Console",
   "Intended Audience :: Developers",
   "Programming Language :: Python :: 3",
