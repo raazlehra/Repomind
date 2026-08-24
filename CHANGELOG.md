@@ -5,6 +5,7 @@
 - Added an initial `repomind audit` command that generates deterministic Markdown and JSON repository audit reports from the local index.
 - The audit report summarizes repository structure, detected architecture, important files, API routes, test files, likely test commands, risk notes, and a suggested AI context pack.
 - Added structured local risk findings for paid-audit-style review, including SQLite-only month filters, weak production secrets, unsafe CORS, provisioning token exposure, frontend `localStorage` bearer tokens, parent provisioning email mismatch hotspots, and missing frontend flow coverage.
+- Refined runtime secret and CORS risk detection so test-only validation evidence is not promoted to production security findings.
 
 ## 1.0.1
 

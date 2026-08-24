@@ -13,6 +13,9 @@ from repomind.retrieval import ContextRetriever, fit_context_to_budget
 AUDIT_SCHEMA_VERSION = "1"
 MAX_RISK_FILE_BYTES = 500_000
 RISK_LANGUAGES = frozenset({"python", "javascript", "jsx", "typescript", "tsx", "config", "sql"})
+CONFIG_PATH_MARKERS = frozenset(
+    {"config", "settings", "security", "secrets", "env", "main", "app", "asgi", "wsgi"}
+)
 SECRET_LITERAL_RE = re.compile(
     r"""(?ix)
     \b(secret[_-]?key|jwt[_-]?secret|token|api[_-]?key|password)\b
@@ -315,6 +318,8 @@ def _risk_source_files(
     for item in files:
         if str(item["language"]) not in RISK_LANGUAGES:
             continue
+        if _is_review_artifact_path(str(item["path"])):
+            continue
         path = database.root / str(item["path"])
         try:
             if path.stat().st_size > MAX_RISK_FILE_BYTES:
@@ -352,7 +357,7 @@ def _detect_weak_secret_key(
     findings: list[dict[str, Any]], source_files: list[dict[str, Any]]
 ) -> None:
     evidence: list[dict[str, Any]] = []
-    for source in source_files:
+    for source in _runtime_config_sources(source_files):
         for line_number, line in enumerate(source["lines"], start=1):
             upper = line.upper()
             if "SECRET_KEY" not in upper and "JWT_SECRET" not in upper and "APP_SECRET" not in upper:
@@ -382,7 +387,7 @@ def _detect_unsafe_cors(
     findings: list[dict[str, Any]], source_files: list[dict[str, Any]]
 ) -> None:
     evidence = _collect_evidence(
-        source_files,
+        _runtime_sources(source_files),
         lambda line: (
             ("allow_origins" in line and '"*"' in line)
             or ("allow_origins" in line and "'*'" in line)
@@ -577,6 +582,49 @@ def _collect_evidence(
                 evidence.append(_evidence(source["path"], line_number, line))
                 break
     return evidence[:12]
+
+
+def _runtime_sources(source_files: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [source for source in source_files if not _is_test_source(source)]
+
+
+def _runtime_config_sources(source_files: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [source for source in _runtime_sources(source_files) if _is_config_security_source(source)]
+
+
+def _is_test_source(source: dict[str, Any]) -> bool:
+    if bool(source["is_test"]):
+        return True
+    path = _normalized_path(str(source["path"]))
+    parts = set(path.split("/"))
+    name = Path(path).name.lower()
+    return (
+        "tests" in parts
+        or "__tests__" in parts
+        or name.startswith("test_")
+        or ".test." in name
+        or ".spec." in name
+    )
+
+
+def _is_config_security_source(source: dict[str, Any]) -> bool:
+    path = _normalized_path(str(source["path"]))
+    parts = {part.lower() for part in path.replace(".", "/").split("/")}
+    name = Path(path).name.lower()
+    return (
+        str(source["purpose"]) == "configuration"
+        or bool(parts & CONFIG_PATH_MARKERS)
+        or name in {"main.py", "app.py", "asgi.py", "wsgi.py"}
+    )
+
+
+def _normalized_path(path: str) -> str:
+    return path.replace("\\", "/")
+
+
+def _is_review_artifact_path(path: str) -> bool:
+    normalized = _normalized_path(path).lower()
+    return normalized.startswith("reports/") or "/reports/" in normalized
 
 
 def _evidence(path: str, line: int | None, snippet: str) -> dict[str, Any]:

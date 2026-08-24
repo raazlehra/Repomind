@@ -58,6 +58,8 @@ def test_cli_audit_writes_markdown_and_json(python_repo: Path, tmp_path: Path, c
     assert "Audit: written" in status
     markdown = markdown_path.read_text(encoding="utf-8")
     data = json.loads(json_path.read_text(encoding="utf-8"))
+    assert markdown_path.stat().st_size > 0
+    assert json_path.stat().st_size > 0
     assert "# RepoMind Repository Audit" in markdown
     assert "POST `/login`" in markdown
     assert data["summary"]["parse_errors"] == 0
@@ -85,6 +87,7 @@ def test_cli_audit_detects_paid_audit_risks(tmp_path: Path, capsys) -> None:  # 
     (repo / "backend" / "app" / "api").mkdir(parents=True)
     (repo / "frontend" / "src").mkdir(parents=True)
     (repo / "backend" / "tests").mkdir(parents=True)
+    (repo / "reports").mkdir(parents=True)
     (repo / "backend" / "requirements.txt").write_text(
         "fastapi\nsqlalchemy\npsycopg2\npytest\n",
         encoding="utf-8",
@@ -158,6 +161,10 @@ def provision_parent(parent_email: str):
         "def test_backend_parent_flow() -> None:\n    assert True\n",
         encoding="utf-8",
     )
+    (repo / "reports" / "old-audit.json").write_text(
+        json.dumps({"snippet": "parent_email provisioning activation_token"}),
+        encoding="utf-8",
+    )
     markdown_path = tmp_path / "risk-audit.md"
     json_path = tmp_path / "risk-audit.json"
 
@@ -192,7 +199,72 @@ def provision_parent(parent_email: str):
     assert "SQLite-only month filtering" in markdown
     assert "Frontend stores bearer-token material in localStorage" in markdown
     assert "dev-secret" not in markdown
-    assert any("redacted" in item["snippet"] for item in data["risk_findings"][0]["evidence"])
+    weak_secret = next(finding for finding in data["risk_findings"] if finding["id"] == "weak-secret-key")
+    assert weak_secret["evidence"][0]["path"] == "backend/app/config.py"
+    assert any("redacted" in item["snippet"] for item in weak_secret["evidence"])
+    parent_email = next(
+        finding
+        for finding in data["risk_findings"]
+        if finding["id"] == "parent-provisioning-email-mismatch"
+    )
+    assert all(not item["path"].startswith("reports/") for item in parent_email["evidence"])
+
+
+def test_cli_audit_does_not_report_test_secret_values_as_runtime_risk(
+    tmp_path: Path, capsys
+) -> None:  # type: ignore[no-untyped-def]
+    repo = tmp_path / "validated_config_app"
+    (repo / "backend" / "app").mkdir(parents=True)
+    (repo / "backend" / "tests").mkdir(parents=True)
+    (repo / "backend" / "app" / "config.py").write_text(
+        """import os
+
+SECRET_KEY = os.environ["SECRET_KEY"]
+
+def validate_for_runtime() -> None:
+    if len(SECRET_KEY) < 32:
+        raise RuntimeError("SECRET_KEY is too short")
+""",
+        encoding="utf-8",
+    )
+    (repo / "backend" / "tests" / "test_config.py").write_text(
+        """from backend.app.config import validate_for_runtime
+
+def valid_production_settings(secret_key: str) -> object:
+    return object()
+
+def test_rejects_weak_secret_key() -> None:
+    settings = valid_production_settings(secret_key="dev-secret")
+    assert settings is not None
+    validate_for_runtime
+""",
+        encoding="utf-8",
+    )
+    markdown_path = tmp_path / "validated-config-audit.md"
+    json_path = tmp_path / "validated-config-audit.json"
+
+    assert (
+        main(
+            [
+                "audit",
+                str(repo),
+                "--output",
+                str(markdown_path),
+                "--json",
+                str(json_path),
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    weak_secret_findings = [
+        finding for finding in data["risk_findings"] if finding["id"] == "weak-secret-key"
+    ]
+    assert weak_secret_findings == []
+    assert markdown_path.stat().st_size > 0
+    assert json_path.stat().st_size > 0
 
 
 def test_cli_install_codex_is_idempotent(tmp_path: Path, capsys) -> None:  # type: ignore[no-untyped-def]
