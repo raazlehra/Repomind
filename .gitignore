@@ -33,3 +33,6 @@ coverage/
 /benchmark-output/
 /benchmarks/real_repos/
 /tmp/
+
+# Local generated audit reports
+reports/
