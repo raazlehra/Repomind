@@ -57,6 +57,7 @@ repomind init
 repomind status
 repomind map --depth 3 --symbols
 repomind context "fix authentication refresh token bug"
+repomind audit . --output reports/audit.md --json reports/audit.json
 ```
 
 Example focused workflow:
@@ -82,6 +83,7 @@ RepoMind does not print whole files for normal context retrieval. `snippets` and
 | `repomind status` | Show indexed, changed, deleted, new, rename, and health counts |
 | `repomind map` | Compact file map, optionally with symbols or JSON |
 | `repomind context "task"` | Retrieve budgeted task context |
+| `repomind audit [path]` | Generate a Markdown repository audit and optional JSON output |
 | `repomind symbol SYMBOL` | Show symbol signatures and locations |
 | `repomind callers SYMBOL` | Show resolvable incoming symbol edges |
 | `repomind dependencies TARGET` | Show outgoing dependencies |
@@ -91,6 +93,19 @@ RepoMind does not print whole files for normal context retrieval. `snippets` and
 | `repomind install-codex` | Install/update RepoMind's Codex integration safely |
 
 Most read commands accept `--format text`, `--format markdown`, or `--format json`. Use `-C PATH`/`--repository PATH` from outside a repository.
+
+### Repository audit
+
+`repomind audit` creates or refreshes the local index, then emits a deterministic repository audit report. It does not execute repository source code or upload source anywhere.
+
+```bash
+repomind audit . --output reports/audit.md --json reports/audit.json
+repomind audit . --task "fix authentication route" --output reports/auth-audit.md
+```
+
+The report includes indexed file counts, detected architecture, important files, API routes, test files, likely test commands, structured risk findings, short risk notes, and a suggested AI context pack. Markdown output is intended for human review; JSON output carries the same findings in a deterministic artifact suitable for tracking or comparison.
+
+Risk findings are static, local heuristics based on indexed files and bounded source reads. The initial paid-audit checks cover SQLite-specific SQLAlchemy month filters, weak production secret defaults, wildcard CORS, exposed provisioning or activation token flows, frontend bearer tokens in `localStorage`, parent provisioning email mismatch hotspots, and missing frontend E2E/component coverage for critical browser flows. Use `--no-refresh` to generate a report from the existing index without refreshing changed files.
 
 ### Context budgets
 

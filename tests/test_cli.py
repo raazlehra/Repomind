@@ -35,6 +35,166 @@ def test_cli_not_indexed_error(tmp_path: Path, capsys) -> None:  # type: ignore[
     assert "Repository is not indexed. Run: repomind init" in capsys.readouterr().err
 
 
+def test_cli_audit_writes_markdown_and_json(python_repo: Path, tmp_path: Path, capsys) -> None:  # type: ignore[no-untyped-def]
+    markdown_path = tmp_path / "audit.md"
+    json_path = tmp_path / "audit.json"
+
+    assert (
+        main(
+            [
+                "audit",
+                str(python_repo),
+                "--task",
+                "fix authentication route",
+                "--output",
+                str(markdown_path),
+                "--json",
+                str(json_path),
+            ]
+        )
+        == 0
+    )
+    status = capsys.readouterr().out
+    assert "Audit: written" in status
+    markdown = markdown_path.read_text(encoding="utf-8")
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    assert "# RepoMind Repository Audit" in markdown
+    assert "POST `/login`" in markdown
+    assert data["summary"]["parse_errors"] == 0
+    assert data["summary"]["routes"] >= 2
+    assert any(route["path"] == "/login" for route in data["api_routes"])
+    assert data["context_pack"]["relevant_files"]
+    assert "python -m pytest" in data["test_commands"]
+
+
+def test_cli_audit_detects_package_scripts(mixed_repo: Path, tmp_path: Path, capsys) -> None:  # type: ignore[no-untyped-def]
+    json_path = tmp_path / "mixed-audit.json"
+
+    assert main(["audit", str(mixed_repo), "--json", str(json_path), "--output", str(tmp_path / "audit.md")]) == 0
+    capsys.readouterr()
+
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    assert "npm run build" in data["test_commands"]
+    assert "npm run test" in data["test_commands"]
+    assert any(item["name"] == "React" for item in data["architecture"])
+    assert any(item["name"] == "FastAPI" for item in data["architecture"])
+
+
+def test_cli_audit_detects_paid_audit_risks(tmp_path: Path, capsys) -> None:  # type: ignore[no-untyped-def]
+    repo = tmp_path / "risky_app"
+    (repo / "backend" / "app" / "api").mkdir(parents=True)
+    (repo / "frontend" / "src").mkdir(parents=True)
+    (repo / "backend" / "tests").mkdir(parents=True)
+    (repo / "backend" / "requirements.txt").write_text(
+        "fastapi\nsqlalchemy\npsycopg2\npytest\n",
+        encoding="utf-8",
+    )
+    (repo / "frontend" / "package.json").write_text(
+        json.dumps(
+            {
+                "dependencies": {"@vitejs/plugin-react": "latest", "react": "latest"},
+                "devDependencies": {"typescript": "latest", "vite": "latest"},
+                "scripts": {"build": "vite build"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (repo / "backend" / "app" / "main.py").write_text(
+        """from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True)
+""",
+        encoding="utf-8",
+    )
+    (repo / "backend" / "app" / "config.py").write_text(
+        """import os
+
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
+""",
+        encoding="utf-8",
+    )
+    (repo / "backend" / "app" / "api" / "reports.py").write_text(
+        """from fastapi import APIRouter
+from sqlalchemy import func
+
+router = APIRouter()
+
+@router.get("/fees/monthly")
+def monthly_fees():
+    return func.strftime("%Y-%m", "created_at")
+""",
+        encoding="utf-8",
+    )
+    (repo / "backend" / "app" / "api" / "parents.py").write_text(
+        """from fastapi import APIRouter
+
+router = APIRouter()
+
+@router.post("/parents/provision")
+def provision_parent(parent_email: str):
+    invite = {"activation_token": "token-value", "parent_email": parent_email}
+    return {"activation_token": invite["activation_token"], "parent_email": parent_email}
+""",
+        encoding="utf-8",
+    )
+    (repo / "frontend" / "src" / "auth.ts").write_text(
+        """export function saveToken(token: string) {
+  localStorage.setItem("auth_token", token);
+  return { Authorization: `Bearer ${localStorage.getItem("auth_token")}` };
+}
+""",
+        encoding="utf-8",
+    )
+    (repo / "frontend" / "src" / "AdminProvisioning.tsx").write_text(
+        """export function AdminProvisioning({ activation_token }: { activation_token: string }) {
+  return <textarea value={activation_token} readOnly />;
+}
+""",
+        encoding="utf-8",
+    )
+    (repo / "backend" / "tests" / "test_parents.py").write_text(
+        "def test_backend_parent_flow() -> None:\n    assert True\n",
+        encoding="utf-8",
+    )
+    markdown_path = tmp_path / "risk-audit.md"
+    json_path = tmp_path / "risk-audit.json"
+
+    assert (
+        main(
+            [
+                "audit",
+                str(repo),
+                "--output",
+                str(markdown_path),
+                "--json",
+                str(json_path),
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    markdown = markdown_path.read_text(encoding="utf-8")
+    data = json.loads(json_path.read_text(encoding="utf-8"))
+    risk_ids = {finding["id"] for finding in data["risk_findings"]}
+    assert {
+        "sqlite-month-filter",
+        "weak-secret-key",
+        "unsafe-cors",
+        "provisioning-token-exposure",
+        "frontend-localstorage-bearer-token",
+        "parent-provisioning-email-mismatch",
+        "missing-frontend-critical-flow-tests",
+    } <= risk_ids
+    assert "Risk Findings" in markdown
+    assert "SQLite-only month filtering" in markdown
+    assert "Frontend stores bearer-token material in localStorage" in markdown
+    assert "dev-secret" not in markdown
+    assert any("redacted" in item["snippet"] for item in data["risk_findings"][0]["evidence"])
+
+
 def test_cli_install_codex_is_idempotent(tmp_path: Path, capsys) -> None:  # type: ignore[no-untyped-def]
     assert main(["install-codex", str(tmp_path), "--format", "json"]) == 0
     capsys.readouterr()
