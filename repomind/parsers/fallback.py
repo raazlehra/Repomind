@@ -7,7 +7,8 @@ from repomind.models import EdgeCandidate, ImportRecord, ParseResult, Symbol
 
 _CLASS_RE = re.compile(
     r"^\s*(?:public\s+|private\s+|protected\s+|internal\s+|abstract\s+|final\s+)*"
-    r"(?P<kind>class|interface|struct|enum|trait)\s+(?P<name>[A-Za-z_]\w*)"
+    r"(?P<kind>enum\s+class|data\s+class|class|interface|struct|enum|trait|object)\s+"
+    r"(?P<name>[A-Za-z_]\w*)"
     r"(?P<tail>[^\n{]*)",
     re.MULTILINE,
 )
@@ -44,9 +45,10 @@ class FallbackParser:
                 result.imports.append(ImportRecord(module, None, None, line))
         for match in _CLASS_RE.finditer(source):
             line = source.count("\n", 0, match.start()) + 1
-            kind, name, tail = match.group("kind", "name", "tail")
+            raw_kind, name, tail = match.group("kind", "name", "tail")
+            kind = {"data class": "class", "enum class": "enum"}.get(raw_kind, raw_kind)
             result.symbols.append(
-                Symbol(name, name, kind, f"{kind} {name}{tail.strip()}", line, line, True)
+                Symbol(name, name, kind, f"{raw_kind} {name}{tail.strip()}", line, line, True)
             )
             inheritance = re.search(r"(?:extends|:)\s*([A-Za-z_]\w*)", tail)
             if inheritance:

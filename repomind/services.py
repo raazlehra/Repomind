@@ -8,6 +8,7 @@ from repomind.config import Config
 from repomind.database import INDEX_DIRECTORY, INDEX_FILENAME, IndexDatabase
 from repomind.errors import NotIndexedError, RepoMindError
 from repomind.formatters import render_context
+from repomind.freshness import ensure_index_fresh
 from repomind.git import inspect_git
 from repomind.indexer import Indexer
 from repomind.map import build_repository_map
@@ -68,6 +69,7 @@ def context(
 ) -> dict[str, Any]:
     root = _canonical_repository(repository)
     config = Config.load(root)
+    freshness = ensure_index_fresh(root, config)
     with IndexDatabase(root) as database:
         retriever = ContextRetriever(database)
         resolved_budget = retriever.resolve_budget("balanced", budget, config.context_budget)
@@ -79,42 +81,51 @@ def context(
         "repository": str(root),
         "task": task,
         "context": fitted,
+        "freshness": freshness.as_dict(),
         "retrieval_confidence": _retrieval_confidence(fitted),
     }
 
 
 def symbol(repository: str, target: str) -> dict[str, Any]:
     root = _canonical_repository(repository)
+    freshness = ensure_index_fresh(root)
     with IndexDatabase(root) as database:
         data = symbol_details(database, target)
         for item in data.get("matches", []):
             item["relationships"] = _symbol_relationships(database, str(item["name"]))
         data["repository"] = str(root)
+        data["freshness"] = freshness.as_dict()
         data["ambiguous"] = len(data.get("matches", [])) > 1
         return data
 
 
 def symbol_callers(repository: str, target: str) -> dict[str, Any]:
     root = _canonical_repository(repository)
+    freshness = ensure_index_fresh(root)
     with IndexDatabase(root) as database:
         data = callers(database, target)
         data["repository"] = str(root)
+        data["freshness"] = freshness.as_dict()
         return data
 
 
 def structural_dependencies(repository: str, target: str) -> dict[str, Any]:
     root = _canonical_repository(repository)
+    freshness = ensure_index_fresh(root)
     with IndexDatabase(root) as database:
         data = dependencies(database, target)
         data["repository"] = str(root)
+        data["freshness"] = freshness.as_dict()
         return data
 
 
 def change_impact(repository: str, target: str) -> dict[str, Any]:
     root = _canonical_repository(repository)
+    freshness = ensure_index_fresh(root)
     with IndexDatabase(root) as database:
         data = impact(database, target)
         data["repository"] = str(root)
+        data["freshness"] = freshness.as_dict()
         return data
 
 
@@ -125,6 +136,7 @@ def bounded_snippets(
     token_bound: int | None = None,
 ) -> dict[str, Any]:
     root = _canonical_repository(repository)
+    freshness = ensure_index_fresh(root)
     with IndexDatabase(root) as database:
         data = snippets(database, target)
         if not data.get("snippets"):
@@ -135,6 +147,7 @@ def bounded_snippets(
             for item in data.get("snippets", []):
                 item["code"] = _bound_code(str(item["code"]), line_bound, token_bound)
         data["repository"] = str(root)
+        data["freshness"] = freshness.as_dict()
         return data
 
 
@@ -166,9 +179,11 @@ def repository_map(
     root = _canonical_repository(repository)
     if depth is not None and depth < 1:
         raise ValueError("depth must be at least 1")
+    freshness = ensure_index_fresh(root)
     with IndexDatabase(root) as database:
         return {
             "repository": str(root),
+            "freshness": freshness.as_dict(),
             "files": build_repository_map(database, depth, include_symbols),
         }
 

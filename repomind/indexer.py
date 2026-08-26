@@ -98,15 +98,13 @@ class Indexer:
         for path in set(scanned) & set(indexed):
             current = scanned[path]
             previous = indexed[path]
-            if current.size == int(previous["size"]) and current.mtime_ns == int(
-                previous["mtime_ns"]
-            ):
-                continue
             digest = hash_file(current.absolute_path)
             hashes[path] = digest
             if digest != str(previous["content_hash"]):
                 modified.add(path)
-            else:
+            elif current.size != int(previous["size"]) or current.mtime_ns != int(
+                previous["mtime_ns"]
+            ):
                 metadata_only.append(path)
 
         # A delete/create pair with the same content hash is treated as a rename.

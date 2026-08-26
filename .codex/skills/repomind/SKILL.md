@@ -18,7 +18,7 @@ If RepoMind is available:
 6. Do not treat RepoMind summaries as replacements for source inspection.
 7. Do not scan the entire repository when high-confidence RepoMind output is sufficient.
 8. Broaden inspection when RepoMind reports low confidence or unresolved relationships.
-9. After significant changes, call `repomind_refresh` unless watch mode is active.
+9. After significant changes, call RepoMind read tools normally; they refresh stale saved changes before reading the index. Use `repomind_refresh` only when an explicit refresh result is useful.
 
 If MCP tools are unavailable, use the equivalent CLI fallback: `repomind status`, `repomind context "<user task>" --format markdown`, and deeper `repomind symbol/callers/dependencies/impact/snippets` commands as needed.
 
