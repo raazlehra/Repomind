@@ -43,7 +43,7 @@ Checks whether an explicit repository path has a RepoMind index. Returns reposit
 
 `repomind_context`
 
-Returns task-aware structured context using the existing retriever. Inputs are `repository`, `task`, optional `budget`, and optional `level` defaulting to `1`. The response includes architecture, ranked files, symbols, relationships, likely change surface, approximate tokens, and retrieval confidence. It does not return whole source files.
+Returns task-aware structured context using the existing retriever. Inputs are `repository`, `task`, optional `budget`, and optional `level` defaulting to `1`. The response includes architecture, ranked files, symbols, relationships, likely change surface, approximate tokens, retrieval confidence, and a structured freshness payload. It does not return whole source files.
 
 `repomind_symbol`
 
@@ -80,9 +80,21 @@ Returns the compact repository map with optional depth and symbols.
 3. Inspect actual source files in the coding environment before changing code.
 4. Query `repomind_symbol`, `repomind_dependencies`, `repomind_callers`, or `repomind_impact` only when deeper structural information is needed.
 5. Use `repomind_snippets` for bounded snippets when helpful.
-6. After significant edits, call `repomind_refresh` if watch mode is not active.
+6. After significant edits, call `repomind_context` or another read tool normally; read tools refresh stale saved changes before reading the index. Use `repomind_refresh` when you want an explicit refresh result.
 
 Start with level 1 context. Use level 3 only when the task genuinely needs deeper imports, relationships, and snippets.
+
+## Automatic Freshness
+
+MCP read tools check saved working-tree freshness before reading the index:
+
+```text
+save source -> MCP retrieval request -> freshness check -> incremental refresh if required -> current context
+```
+
+This does not require a Git commit, manual `repomind_refresh`, watch mode, or an MCP server restart. Watch mode remains optional and proactive; it is not the mechanism that guarantees retrieval-time freshness.
+
+Freshness payloads use `status` to distinguish `already_fresh`, `refreshed`, and `partial`. A `partial` status means RepoMind has current file hashes but at least one indexed file currently has a parser error, so symbols/routes/imports from that file may be absent until the source is fixed. Unaffected files remain retrievable.
 
 ## Security Model
 
@@ -116,7 +128,7 @@ Other common errors include `invalid_arguments` and `repomind_error`. Raw intern
 ## Troubleshooting
 
 - If a repository is not indexed, run `repomind init <path>`.
-- If `repomind_status` reports refresh recommended, run `repomind_refresh` or `repomind refresh -C <path>`.
+- If `repomind_status` reports refresh recommended, the next read tool will refresh stale saved changes automatically. Run `repomind_refresh` or `repomind refresh -C <path>` when you want to refresh immediately or inspect the refresh result.
 - If context confidence is low, inspect source normally and broaden discovery.
 - If snippets are empty, confirm the symbol or file path exists in the RepoMind index.
 

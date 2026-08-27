@@ -21,6 +21,7 @@ RepoMind is not a coding agent and does not replace Codex or source inspection. 
 - Imports, calls, inheritance, routes, test-targets, and confidence-scored dependency edges
 - Deterministic architecture detection from manifests and configuration
 - Task ranking using paths, symbols, lexical overlap, graph proximity, tests, purpose, and Git changes
+- Automatic retrieval-time freshness checks for saved working-tree changes
 - Explicit approximate-token budgets and progressive context levels
 - Git-aware status without changing Git state
 - Event-driven optional watch mode with debouncing
@@ -47,7 +48,7 @@ python -m pip install 'repomind[watch]'
 python -m pip install 'repomind[treesitter]'
 ```
 
-Without `watchdog`, `repomind watch` uses a low-frequency polling fallback. Without compatible Tree-sitter grammars, built-in deterministic parsers remain active.
+Without `watchdog`, `repomind watch` is unavailable. Retrieval-time freshness checks still work without watch mode. Without compatible Tree-sitter grammars, built-in deterministic parsers remain active.
 
 ## Quick start
 
@@ -73,13 +74,27 @@ repomind snippets AuthService.login
 
 RepoMind does not print whole files for normal context retrieval. `snippets` and context level 3 read bounded snippets explicitly.
 
+## Automatic freshness
+
+RepoMind read commands automatically check saved working-tree changes before reading the index:
+
+```text
+save source -> retrieval request -> freshness check -> incremental refresh if required -> current context
+```
+
+This applies to `context`, `map`, `symbol`, `callers`, `dependencies`, `impact`, `snippets`, and MCP/service equivalents. Saved changes can be reflected without a Git commit, manual `repomind refresh`, watch mode, or a RepoMind restart.
+
+Watch mode remains an optional proactive mechanism. It is useful when you want the index updated soon after filesystem events, but it is not required for retrieval correctness. RepoMind does not claim that every keystroke triggers indexing; the automatic check runs when a saved file is followed by a retrieval request.
+
+If automatic freshness reaches a current but partial state because one or more files have parser errors, normal successful reads continue for unaffected files and the structured freshness payload reports `status: "partial"` with an indexed parse-error count. CLI read commands print a warning in that case so stale valid symbols from the broken file are not silently presented as newly parsed current data.
+
 ## CLI
 
 | Command | Purpose |
 |---|---|
 | `repomind init [path]` | Create and populate an index |
 | `repomind refresh` | Hash and reparse only created/modified files; remove deleted files |
-| `repomind watch` | Debounce filesystem changes and refresh automatically |
+| `repomind watch` | Debounce filesystem changes and refresh proactively |
 | `repomind status` | Show indexed, changed, deleted, new, rename, and health counts |
 | `repomind map` | Compact file map, optionally with symbols or JSON |
 | `repomind context "task"` | Retrieve budgeted task context |
@@ -172,7 +187,7 @@ repomind install-codex
 
 This creates the project-local skill and creates or appends a delimited RepoMind section to `AGENTS.md`. Existing content is preserved. Repeated runs are idempotent.
 
-The skill instructs Codex to query RepoMind before broad scanning, use the result for file discovery, inspect actual source before edits, request deeper detail only when needed, and refresh after significant changes if watch mode is inactive.
+The skill instructs Codex to query RepoMind before broad scanning, use the result for file discovery, inspect actual source before edits, and request deeper detail only when needed. Read commands automatically refresh stale saved changes; `repomind refresh` remains available for explicit maintenance.
 
 ## MCP integration
 
@@ -183,7 +198,7 @@ pip install -e .
 repomind mcp
 ```
 
-The MCP server uses standard stdio transport and exposes status, context, symbol, callers, dependencies, impact, snippets, refresh, and map tools. Start with `repomind_status`, then request `repomind_context` at level 1 for the task. RepoMind is a discovery accelerator; agents should still inspect actual source files before edits. See [docs/MCP.md](docs/MCP.md).
+The MCP server uses standard stdio transport and exposes status, context, symbol, callers, dependencies, impact, snippets, refresh, and map tools. Start with `repomind_status`, then request `repomind_context` at level 1 for the task. Context, symbol, dependency, impact, snippet, and map tools refresh stale saved changes before reading the index. RepoMind is a discovery accelerator; agents should still inspect actual source files before edits. See [docs/MCP.md](docs/MCP.md).
 
 ## Privacy and security model
 

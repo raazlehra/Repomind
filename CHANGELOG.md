@@ -1,8 +1,11 @@
 # Changelog
 
-## 2.0.0-beta.1 - Unreleased
+## 2.0.0-beta.6 - Unreleased
 
-- Promoted the v2 repository audit work from alpha to beta metadata (`2.0.0b1`) for release validation.
+- Added automatic retrieval-time index freshness so context, map, symbol, caller, dependency, impact, and snippet reads reflect saved working-tree changes without a manual refresh.
+- Added release-gate coverage for concurrent retrieval freshness, watch/retrieval overlap, atomic refresh visibility, parser failure, and recovery after fixing parser errors.
+- Added structured freshness status values for read paths: already fresh, refreshed, and partial when indexed files currently have parser errors.
+- Promoted the v2 repository audit work from alpha to beta metadata (`2.0.0b6`) for release validation.
 - Added `repomind audit` for deterministic local Markdown and JSON repository audit reports from the RepoMind index.
 - The audit report summarizes repository structure, detected architecture, important files, API routes, test files, likely test commands, risk notes, and a suggested AI context pack.
 - Added structured local risk findings for paid-audit-style review, including SQLite-only month filters, weak production secrets, unsafe CORS, provisioning token exposure, frontend `localStorage` bearer tokens, parent provisioning email mismatch hotspots, and missing frontend flow coverage.

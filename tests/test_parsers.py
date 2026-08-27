@@ -139,3 +139,17 @@ public class PaymentService extends BaseService {
     assert any(symbol.name == "PaymentService" for symbol in result.symbols)
     assert any(symbol.name == "process" for symbol in result.symbols)
     assert any(edge.kind == "inherits" for edge in result.edges)
+
+
+def test_fallback_extracts_kotlin_object_and_enum_class() -> None:
+    source = """package com.moneycompanion.domain
+
+object REPOMIND_FRESHNESS_TEST_MODIFIED
+
+enum class TransactionType { EXPENSE, INCOME }
+"""
+    result = FallbackParser().parse(Path("TransactionParser.kt"), "TransactionParser.kt", source)
+
+    symbols = {symbol.name: symbol for symbol in result.symbols}
+    assert symbols["REPOMIND_FRESHNESS_TEST_MODIFIED"].kind == "object"
+    assert symbols["TransactionType"].kind == "enum"

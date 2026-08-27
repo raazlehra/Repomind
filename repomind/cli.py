@@ -14,6 +14,7 @@ from repomind.database import IndexDatabase
 from repomind.doctor import run_doctor
 from repomind.errors import RepoMindError
 from repomind.formatters import render_context, render_records
+from repomind.freshness import FreshnessResult, ensure_index_fresh
 from repomind.indexer import Indexer, IndexResult, ProgressCallback
 from repomind.integration import install_codex
 from repomind.map import build_repository_map, render_repository_map
@@ -192,6 +193,8 @@ def _dispatch(args: argparse.Namespace) -> int:
         root = resolve_repository(Path(args.repository))
         if args.depth is not None and args.depth < 1:
             raise ValueError("--depth must be at least 1")
+        freshness = ensure_index_fresh(root)
+        _warn_if_partial(freshness)
         with IndexDatabase(root) as database:
             items = build_repository_map(database, args.depth, bool(args.symbols))
         output_format = "json" if bool(args.json) else str(args.format)
@@ -200,6 +203,8 @@ def _dispatch(args: argparse.Namespace) -> int:
     if command == "context":
         root = resolve_repository(Path(args.repository))
         config = Config.load(root)
+        freshness = ensure_index_fresh(root, config)
+        _warn_if_partial(freshness)
         with IndexDatabase(root) as database:
             retriever = ContextRetriever(database)
             budget = retriever.resolve_budget(str(args.mode), args.budget, config.context_budget)
@@ -242,6 +247,8 @@ def _dispatch(args: argparse.Namespace) -> int:
         return 0
     if command in {"symbol", "callers", "dependencies", "impact", "snippets"}:
         root = resolve_repository(Path(args.repository))
+        freshness = ensure_index_fresh(root)
+        _warn_if_partial(freshness)
         with IndexDatabase(root) as database:
             handlers = {
                 "symbol": symbol_details,
@@ -309,6 +316,11 @@ def _progress_callback() -> ProgressCallback | None:
         print(f"\rIndexing {index}: {path[:70]:<70}", end="", file=sys.stderr, flush=True)
 
     return progress
+
+
+def _warn_if_partial(freshness: FreshnessResult) -> None:
+    if freshness.warning:
+        print(f"RepoMind warning: {freshness.warning}", file=sys.stderr)
 
 
 if __name__ == "__main__":
