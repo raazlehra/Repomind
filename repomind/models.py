@@ -97,6 +97,8 @@ class RankedFile:
     purpose: str
     language: str
     symbols: list[dict[str, Any]] = field(default_factory=list)
+    score_components: dict[str, float] = field(default_factory=dict)
+    explanations: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True, slots=True)

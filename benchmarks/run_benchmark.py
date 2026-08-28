@@ -54,6 +54,9 @@ def run_benchmarks(budget: int = 2000) -> dict[str, Any]:
                 "initial_index_seconds": initial.duration_seconds,
                 "incremental_index_seconds": incremental.duration_seconds,
                 "incremental_files_parsed": incremental.parsed_files,
+                "incremental_files_reused": max(0, incremental.indexed_files - incremental.parsed_files),
+                "incremental_new_files": len(incremental.changes.created),
+                "incremental_deleted_files": len(incremental.changes.deleted),
             }
 
         for specification in tasks:
@@ -71,6 +74,13 @@ def run_benchmarks(budget: int = 2000) -> dict[str, Any]:
                 )
                 latency = time.perf_counter() - started
             retrieved = [str(item["path"]) for item in fitted["relevant_files"]]
+            context_metrics = fitted.get("metrics", {})
+            task_context = (
+                context_metrics.get("task_context", {}) if isinstance(context_metrics, dict) else {}
+            )
+            reduction = (
+                context_metrics.get("reduction", {}) if isinstance(context_metrics, dict) else {}
+            )
             source_bytes = sum(
                 (repository / path).stat().st_size
                 for path in retrieved
@@ -92,10 +102,20 @@ def run_benchmarks(budget: int = 2000) -> dict[str, Any]:
                     "repository": specification["repository"],
                     "task": task,
                     "files_inspected": len(retrieved),
+                    "candidate_files_considered": task_context.get(
+                        "candidate_files_considered", 0
+                    ),
                     "source_context_bytes_retrieved": source_context_bytes,
                     "selected_files_total_bytes": source_bytes,
                     "context_output_bytes": len(output.encode("utf-8")),
                     "approximate_tokens": approximate_tokens(output),
+                    "estimated_context_tokens": task_context.get(
+                        "estimated_context_tokens", approximate_tokens(output)
+                    ),
+                    "file_reduction_percent": reduction.get("file_reduction_percent", 0.0),
+                    "context_volume_reduction_percent": reduction.get(
+                        "context_volume_reduction_percent", 0.0
+                    ),
                     "retrieval_latency_seconds": latency,
                     "expected_files": sorted(expected),
                     "retrieved_expected_files": sorted(found),
@@ -139,28 +159,31 @@ def render_markdown(results: dict[str, Any]) -> str:
         "",
         "## Repository indexing",
         "",
-        "| Fixture | Files | Initial (s) | Incremental (s) | Parsed incrementally | Index bytes |",
-        "|---|---:|---:|---:|---:|---:|",
+        "| Fixture | Files | Initial (s) | Incremental (s) | Parsed incrementally | Reused | New | Deleted | Index bytes |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for name, item in results["repositories"].items():
         lines.append(
             f"| {name} | {item['indexed_files']} | {item['initial_index_seconds']:.6f} | "
-            f"{item['incremental_index_seconds']:.6f} | {item['incremental_files_parsed']} | {item['index_bytes']} |"
+            f"{item['incremental_index_seconds']:.6f} | {item['incremental_files_parsed']} | "
+            f"{item['incremental_files_reused']} | {item['incremental_new_files']} | "
+            f"{item['incremental_deleted_files']} | {item['index_bytes']} |"
         )
     lines.extend(
         [
             "",
             "## Task retrieval",
             "",
-            "| Task | Files | Source context bytes | Selected files total bytes | Output bytes | Approx. tokens | Latency (s) | Expected recall |",
-            "|---|---:|---:|---:|---:|---:|---:|---:|",
+            "| Task | Files | Candidates | Source context bytes | Selected files total bytes | Output bytes | Est. tokens | File reduction | Context reduction | Latency (s) | Expected recall |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     for item in results["tasks"]:
         lines.append(
-            f"| {item['task']} | {item['files_inspected']} | {item['source_context_bytes_retrieved']} | "
+            f"| {item['task']} | {item['files_inspected']} | {item['candidate_files_considered']} | {item['source_context_bytes_retrieved']} | "
             f"{item['selected_files_total_bytes']} | {item['context_output_bytes']} | "
-            f"{item['approximate_tokens']} | {item['retrieval_latency_seconds']:.6f} | "
+            f"{item['estimated_context_tokens']} | {item['file_reduction_percent']:.2f}% | "
+            f"{item['context_volume_reduction_percent']:.2f}% | {item['retrieval_latency_seconds']:.6f} | "
             f"{item['expected_file_recall']:.3f} |"
         )
     summary = results["summary"]

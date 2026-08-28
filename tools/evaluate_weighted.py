@@ -46,9 +46,9 @@ def compute_metrics(
 
     context_efficiency = selected_tokens / max(1, baseline_tokens)
 
-    # Composite score = critical_recall - 0.5*secondary - 0.5*test - noise_ratio
+    # Composite score rewards recall while penalizing noise.
     retrieval_quality = (
-        critical_recall - 0.5 * secondary_recall - 0.5 * test_recall - noise_ratio
+        critical_recall + 0.5 * secondary_recall + 0.5 * test_recall - noise_ratio
     )
 
     return {
@@ -84,6 +84,12 @@ def evaluate(
                     selected = [f["path"] for f in package.get("relevant_files", [])]
                     selected_tokens = approximate_tokens(rendered)
                     metrics = compute_metrics(selected, labels, baseline_tokens, selected_tokens)
+                    context_metrics = package.get("metrics", {})
+                    task_context = (
+                        context_metrics.get("task_context", {})
+                        if isinstance(context_metrics, dict)
+                        else {}
+                    )
                     results.append(
                         {
                             "repo": str(root),
@@ -91,6 +97,8 @@ def evaluate(
                             "budget": budget,
                             "level": level,
                             "approx_tokens": approx,
+                            "files_returned": len(selected),
+                            "context_bytes": task_context.get("context_output_bytes", 0),
                             "selected_tokens": selected_tokens,
                             "selected_files": selected,
                             "elapsed_ms": int((time.time() - start) * 1000),

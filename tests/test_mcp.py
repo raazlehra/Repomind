@@ -41,6 +41,7 @@ async def test_mcp_server_startup_and_status(python_repo: Path) -> None:
         "repomind_snippets",
         "repomind_refresh",
         "repomind_map",
+        "repomind_stats",
     }.issubset(tool_names)
     assert status.structured_content["initialized"] is True
     assert status.structured_content["index_health"] == "ok"
@@ -76,6 +77,27 @@ async def test_mcp_context_and_cli_equivalence(mixed_repo: Path, capsys: Any) ->
     cli_paths = [item["path"] for item in cli_data["relevant_files"]]
     assert mcp_paths == cli_paths
     assert mcp_data["context"]["budget"]["requested_tokens"] == 1000
+
+
+@pytest.mark.anyio
+async def test_mcp_context_explain_and_stats(python_repo: Path) -> None:
+    Indexer(python_repo).initialize(force=True)
+
+    explained = await call_tool(
+        "repomind_context",
+        {
+            "repository": str(python_repo),
+            "task": "fix login refresh token bug",
+            "budget": 1000,
+            "level": 1,
+            "explain": True,
+        },
+    )
+    stats = await call_tool("repomind_stats", {"repository": str(python_repo)})
+
+    assert explained["context"]["relevant_files"][0]["explanations"]
+    assert explained["context"]["metrics"]["task_context"]["estimated_context_tokens"] > 0
+    assert stats["title"] == "RepoMind Repository Intelligence"
 
 
 @pytest.mark.anyio

@@ -16,6 +16,9 @@ def render_context(package: dict[str, Any], output_format: str) -> str:
     task = str(package.get("task", ""))
     lines.append(f"# RepoMind context: {task}" if markdown else f"Task: {task}")
     lines.append(f"Context level: {package.get('context_level', 1)}")
+    intent = package.get("intent", {})
+    if isinstance(intent, dict) and intent.get("labels"):
+        lines.append(f"Intent: {', '.join(str(item) for item in intent['labels'])}")
 
     architecture = package.get("architecture", [])
     if architecture:
@@ -34,6 +37,26 @@ def render_context(package: dict[str, Any], output_format: str) -> str:
             reasons = "; ".join(item.get("reasons", []))
             lines.append(
                 f"{prefix}{item['path']} [{item['purpose']}; score {item['score']}] — {reasons}"
+            )
+            explanations = item.get("explanations", [])
+            if explanations:
+                detail_prefix = "  - " if markdown else "    "
+                for reason in explanations[:4]:
+                    lines.append(f"{detail_prefix}{reason}")
+                breakdown = item.get("score_breakdown", {})
+                if breakdown:
+                    parts = ", ".join(
+                        f"{key}={value}" for key, value in breakdown.items()
+                    )
+                    lines.append(f"{detail_prefix}score breakdown: {parts}")
+
+    routes = package.get("routes", [])
+    if routes:
+        lines.extend(("", heading("Relevant routes")))
+        for item in routes:
+            prefix = "- " if markdown else "  "
+            lines.append(
+                f"{prefix}{item['method']} {item['path']} -> {item.get('handler') or item['file']} ({item['file']}:{item['line']})"
             )
 
     symbols = package.get("important_symbols", [])
@@ -108,6 +131,18 @@ def render_context(package: dict[str, Any], output_format: str) -> str:
         lines.append(
             f"Approximate tokens: {budget.get('approximate_tokens', 0)}/{budget.get('requested_tokens', 0)}"
         )
+    metrics = package.get("metrics", {})
+    if isinstance(metrics, dict):
+        repository = metrics.get("repository", {})
+        task_context = metrics.get("task_context", {})
+        reduction = metrics.get("reduction", {})
+        if isinstance(repository, dict) and isinstance(task_context, dict):
+            lines.append(
+                "Context metrics: "
+                f"{task_context.get('files_returned', 0)}/{repository.get('indexed_files', 0)} files, "
+                f"~{task_context.get('estimated_context_tokens', 0)} estimated tokens, "
+                f"{reduction.get('context_volume_reduction_percent', 0)}% context-volume reduction"
+            )
     return "\n".join(lines).strip() + "\n"
 
 

@@ -15,16 +15,18 @@ The harness copies synthetic repositories from `tests/fixtures` into temporary d
 
 1. creates a fresh index;
 2. changes one indexed source file;
-3. runs incremental refresh and records how many files were parsed;
+3. runs incremental refresh and records how many files were parsed, reused, added, or deleted;
 4. retrieves Level 1 Markdown context with a 2,000 approximate-token budget;
 5. compares selected files with hand-authored expected relevant files in `benchmarks/tasks.json`.
 
 Metrics:
 
 - **Files inspected**: ranked file records included in the task context package. This is not a claim that source files were opened.
+- **Candidate files considered**: indexed file records scored for the task before budgeted selection.
 - **Source context bytes retrieved**: bytes of actual source snippets emitted. Level 1 emits no source snippets, so this is zero in the run below.
 - **Selected files total bytes**: combined working-tree size of selected files, reported as scale context only; those bytes were not emitted.
 - **Output bytes / approximate tokens**: size of rendered RepoMind context and the local tokenizer-independent approximation.
+- **File/context reduction**: provider-neutral percentage reductions derived from indexed file count and repository text bytes versus returned files and rendered context bytes. These are measurements, not credit-savings claims.
 - **Retrieval latency**: ranking, package building, budget fitting, and rendering, excluding initial indexing.
 - **Index size**: SQLite database plus active WAL/SHM files at measurement time.
 - **Initial/incremental indexing duration**: wall-clock duration measured by `perf_counter`.

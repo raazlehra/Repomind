@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from repomind.config import Config
+from repomind.context_pack import TOKEN_ESTIMATION_METHOD, estimate_tokens_from_bytes
 from repomind.database import INDEX_DIRECTORY, INDEX_FILENAME, IndexDatabase
 from repomind.errors import NotIndexedError, RepoMindError
 from repomind.formatters import render_context
@@ -66,6 +67,7 @@ def context(
     task: str,
     budget: int | None = None,
     level: int = 1,
+    explain: bool = False,
 ) -> dict[str, Any]:
     root = _canonical_repository(repository)
     config = Config.load(root)
@@ -73,7 +75,7 @@ def context(
     with IndexDatabase(root) as database:
         retriever = ContextRetriever(database)
         resolved_budget = retriever.resolve_budget("balanced", budget, config.context_budget)
-        package = retriever.build_context(task, resolved_budget, level)
+        package = retriever.build_context(task, resolved_budget, level, explain=explain)
         fitted, _ = fit_context_to_budget(
             package, lambda value: render_context(value, "json"), resolved_budget
         )
@@ -84,6 +86,31 @@ def context(
         "freshness": freshness.as_dict(),
         "retrieval_confidence": _retrieval_confidence(fitted),
     }
+
+
+def stats(repository: str) -> dict[str, Any]:
+    root = _canonical_repository(repository)
+    freshness = ensure_index_fresh(root)
+    with IndexDatabase(root) as database:
+        counts = database.counts()
+        total_row = database.connection.execute(
+            "SELECT COALESCE(SUM(size), 0) AS total_bytes FROM files"
+        ).fetchone()
+        route_row = database.connection.execute("SELECT COUNT(*) FROM routes").fetchone()
+        repository_text_bytes = int(total_row["total_bytes"]) if total_row else 0
+        return {
+            "title": "RepoMind Repository Intelligence",
+            "repository": str(root),
+            "indexed_files": counts["files"],
+            "symbols": counts["symbols"],
+            "routes": int(route_row[0]) if route_row else 0,
+            "relationships": counts["dependencies"],
+            "repository_text_bytes": repository_text_bytes,
+            "estimated_repository_tokens": estimate_tokens_from_bytes(repository_text_bytes),
+            "token_estimation_method": TOKEN_ESTIMATION_METHOD,
+            "last_refresh": database.get_meta("last_refresh_at"),
+            "freshness": freshness.as_dict(),
+        }
 
 
 def symbol(repository: str, target: str) -> dict[str, Any]:

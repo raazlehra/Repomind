@@ -41,9 +41,10 @@ def create_server(debug: bool = False) -> MCPServer:
         task: str,
         budget: int | None = None,
         level: int = 1,
+        explain: bool = False,
     ) -> dict[str, Any]:
         """Return structured task-aware context from the existing RepoMind retriever."""
-        return safe(services.context, repository, task, budget, level)
+        return safe(services.context, repository, task, budget, level, explain)
 
     @server.tool()
     def repomind_symbol(repository: str, symbol: str) -> dict[str, Any]:
@@ -88,6 +89,11 @@ def create_server(debug: bool = False) -> MCPServer:
     ) -> dict[str, Any]:
         """Return the compact repository map."""
         return safe(services.repository_map, repository, depth, include_symbols)
+
+    @server.tool()
+    def repomind_stats(repository: str) -> dict[str, Any]:
+        """Return repository intelligence metrics from the current index."""
+        return safe(services.stats, repository)
 
     return server
 

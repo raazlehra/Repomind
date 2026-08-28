@@ -43,7 +43,11 @@ Checks whether an explicit repository path has a RepoMind index. Returns reposit
 
 `repomind_context`
 
-Returns task-aware structured context using the existing retriever. Inputs are `repository`, `task`, optional `budget`, and optional `level` defaulting to `1`. The response includes architecture, ranked files, symbols, relationships, likely change surface, approximate tokens, retrieval confidence, and a structured freshness payload. It does not return whole source files.
+Returns task-aware structured context using the existing retriever. Inputs are `repository`, `task`, optional `budget`, optional `level` defaulting to `1`, and optional `explain` defaulting to `false`. The response includes architecture, deterministic intent labels, ranked files, grouped primary/related/test files, routes, symbols, relationships, likely change surface, budget state, provider-neutral metrics, retrieval confidence, and a structured freshness payload. With `explain: true`, ranked files include human-readable explanations and score components. It does not return whole source files.
+
+`repomind_stats`
+
+Returns repository intelligence metrics from the current index: indexed files, symbols, routes, relationships, repository text bytes represented, estimated repository tokens, token-estimation method, last refresh, and freshness reuse counts.
 
 `repomind_symbol`
 
@@ -137,4 +141,4 @@ Other common errors include `invalid_arguments` and `repomind_error`. Raw intern
 - RepoMind MCP exposes static-analysis data from the local index; it is not semantic/vector retrieval.
 - Static call resolution is conservative and may miss dynamic dispatch, reflection, framework magic, and dependency injection.
 - JS/TS extraction is deterministic structural extraction, with optional Tree-sitter support for declaration spans.
-- Approximate tokens are local estimates, not provider billing-token counts.
+- Approximate tokens and context reduction percentages are local estimates, not provider billing-token counts or guaranteed credit savings.
