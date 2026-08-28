@@ -2,16 +2,33 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import time
 from collections import defaultdict
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from repomind.context_pack import ContextBudget, ContextMetrics, ContextPack
 from repomind.database import IndexDatabase
+from repomind.intent import classify_task_intent
 from repomind.models import RankedFile
 from repomind.utils import approximate_tokens, tokenize
 
 _MODE_BUDGETS = {"minimal": 750, "balanced": 2000, "deep": 5000}
+RANKING_WEIGHTS = {
+    "path_term": 4.0,
+    "path_specific_term": 4.0,
+    "filename": 5.0,
+    "path_phrase": 8.0,
+    "symbol_base": 5.0,
+    "symbol_term": 3.0,
+    "symbol_name": 4.0,
+    "test_relevance": 2.5,
+    "configuration_relevance": 10.0,
+    "migration_relevance": 4.0,
+    "git_changed": 1.5,
+    "intent": 3.0,
+}
 _TERM_ALIASES = {
     "api": {"route", "routes"},
     "auth": {"authentication"},
@@ -69,8 +86,11 @@ class ContextRetriever:
             return budget
         return _MODE_BUDGETS.get(mode, configured)
 
-    def rank_files(self, task: str, limit: int = 30) -> list[RankedFile]:
+    def rank_files(
+        self, task: str, limit: int = 30, intent: list[str] | None = None
+    ) -> list[RankedFile]:
         task_lower = task.lower().strip()
+        intent_labels = intent or classify_task_intent(task)
         terms = _expand_terms(tokenize(task) - _STOPWORDS)
         files = list(self.connection.execute("SELECT * FROM files"))
         symbols = list(
@@ -89,20 +109,28 @@ class ContextRetriever:
             path_lower = path.lower()
             path_terms = tokenize(path)
             overlap = terms & path_terms
-            score = float(len(overlap) * 4)
+            score = float(len(overlap) * RANKING_WEIGHTS["path_term"])
             reasons: list[str] = []
+            components: dict[str, float] = {}
             if overlap:
                 reasons.append("path:" + ",".join(sorted(overlap)))
+                _add_component(
+                    components, "path", len(overlap) * RANKING_WEIGHTS["path_term"]
+                )
                 specific_path_terms = {term for term in overlap if len(term) >= 5}
                 if specific_path_terms:
-                    score += len(specific_path_terms) * 4
+                    amount = len(specific_path_terms) * RANKING_WEIGHTS["path_specific_term"]
+                    score += amount
+                    _add_component(components, "path", amount)
                     reasons.append("path-specific:" + ",".join(sorted(specific_path_terms)))
             stem = Path(path).stem.lower()
             if stem in terms:
-                score += 5
+                score += RANKING_WEIGHTS["filename"]
+                _add_component(components, "path", RANKING_WEIGHTS["filename"])
                 reasons.append("filename")
             if task_lower and task_lower in path_lower:
-                score += 8
+                score += RANKING_WEIGHTS["path_phrase"]
+                _add_component(components, "path", RANKING_WEIGHTS["path_phrase"])
                 reasons.append("path phrase")
             matched_symbols: list[dict[str, Any]] = []
             symbol_score_total = 0.0
@@ -116,15 +144,19 @@ class ContextRetriever:
                     if overlap_key in seen_symbol_overlaps:
                         continue
                     seen_symbol_overlaps.add(overlap_key)
-                    symbol_score = 5 + len(symbol_overlap) * 3
+                    symbol_score = RANKING_WEIGHTS["symbol_base"] + len(
+                        symbol_overlap
+                    ) * RANKING_WEIGHTS["symbol_term"]
                     if str(symbol["name"]).lower() in terms:
-                        symbol_score += 4
+                        symbol_score += RANKING_WEIGHTS["symbol_name"]
                     capped = min(symbol_score, 14)
                     allowed = max(0.0, 28.0 - symbol_score_total)
                     if allowed <= 0:
                         continue
-                    score += min(capped, allowed)
-                    symbol_score_total += min(capped, allowed)
+                    amount = min(capped, allowed)
+                    score += amount
+                    symbol_score_total += amount
+                    _add_component(components, "symbol", amount)
                     reasons.append(f"symbol:{symbol['qualified_name']}")
                     matched_symbols.append(
                         {
@@ -137,17 +169,28 @@ class ContextRetriever:
                     )
             purpose = str(row["purpose"])
             if purpose == "test" and terms & {"test", "tests", "spec", "bug", "fix"}:
-                score += 2.5
+                score += RANKING_WEIGHTS["test_relevance"]
+                _add_component(components, "test", RANKING_WEIGHTS["test_relevance"])
                 reasons.append("test relevance")
             if purpose == "configuration" and terms & _CONFIG_TERMS:
-                score += 10
+                score += RANKING_WEIGHTS["configuration_relevance"]
+                _add_component(
+                    components, "configuration", RANKING_WEIGHTS["configuration_relevance"]
+                )
                 reasons.append("configuration relevance")
             if purpose == "migration" and terms & {"database", "schema", "model", "migration"}:
-                score += 4
+                score += RANKING_WEIGHTS["migration_relevance"]
+                _add_component(components, "database", RANKING_WEIGHTS["migration_relevance"])
                 reasons.append("migration relevance")
             if path in changed:
-                score += 1.5
+                score += RANKING_WEIGHTS["git_changed"]
+                _add_component(components, "freshness", RANKING_WEIGHTS["git_changed"])
                 reasons.append("git changed")
+            intent_boost = self._intent_boost(intent_labels, purpose, path)
+            if intent_boost:
+                score += intent_boost
+                _add_component(components, "intent", intent_boost)
+                reasons.append("task-intent boost:" + ",".join(intent_labels))
             if score > 0:
                 ranked[file_id] = RankedFile(
                     path,
@@ -156,6 +199,8 @@ class ContextRetriever:
                     purpose,
                     str(row["language"]),
                     matched_symbols,
+                    components,
+                    _ranking_explanations(reasons),
                 )
 
         if not ranked:
@@ -169,48 +214,76 @@ class ContextRetriever:
                         str(row["purpose"]),
                         str(row["language"]),
                         [],
+                        {"lexical": 0.5},
+                        ["repository entry point selected because no lexical match was found"],
                     )
 
         self._expand_graph(ranked, files, terms)
         return sorted(ranked.values(), key=lambda item: (-item.score, item.path))[:limit]
 
-    def build_context(self, task: str, budget: int, level: int = 1) -> dict[str, Any]:
+    def build_context(
+        self, task: str, budget: int, level: int = 1, explain: bool = False
+    ) -> dict[str, Any]:
+        return self.build_context_pack(task, budget, level).as_dict(explain=explain)
+
+    def build_context_pack(self, task: str, budget: int, level: int = 1) -> ContextPack:
+        started = time.perf_counter()
         level = min(3, max(1, level))
-        ranked = self.rank_files(task)
+        intent = classify_task_intent(task)
+        ranked = self.rank_files(task, intent=intent)
         selected = ranked[: min(15, max(4, budget // 180))]
         selected_paths = {item.path for item in selected}
-        package: dict[str, Any] = {
-            "task": task,
-            "context_level": level,
-            "architecture": self._architecture(),
-            "relevant_files": [
-                {
-                    "path": item.path,
-                    "score": round(item.score, 2),
-                    "purpose": item.purpose,
-                    "language": item.language,
-                    "reasons": item.reasons[:3],
-                }
+        relevant_files = [
+            {
+                "path": item.path,
+                "score": round(item.score, 2),
+                "purpose": item.purpose,
+                "language": item.language,
+                "reasons": item.reasons[:3],
+                "explanations": item.explanations,
+                "score_breakdown": {
+                    key: round(value, 3) for key, value in item.score_components.items()
+                },
+            }
+            for item in selected
+        ]
+        pack = ContextPack(
+            task=task,
+            context_level=level,
+            intent=intent,
+            architecture=self._architecture(),
+            relevant_files=relevant_files,
+            primary_files=[
+                item.path
                 for item in selected
-            ],
-            "important_symbols": self._important_symbols(selected, include_signatures=level >= 2),
-            "relationships": self._relationships(selected_paths, max_items=max(8, budget // 130)),
-            "likely_modification_area": [
+                if item.purpose not in {"documentation", "configuration", "test"}
+            ][:8],
+            related_files=[
+                item.path
+                for item in selected
+                if item.purpose in {"documentation", "configuration"}
+            ][:8],
+            relevant_tests=[item.path for item in selected if item.purpose == "test"][:8],
+            routes=self._routes(selected_paths, max_items=max(6, budget // 240)),
+            important_symbols=self._important_symbols(selected, include_signatures=level >= 2),
+            relationships=self._relationships(selected_paths, max_items=max(8, budget // 130)),
+            likely_modification_area=[
                 item.path
                 for item in selected
                 if item.purpose not in {"documentation", "configuration", "test"}
             ][:6],
-            "source_authority": "RepoMind summaries guide discovery; inspect actual source before modification.",
-        }
+            budget=ContextBudget(requested_tokens=budget),
+            metrics=self._metrics_base(selected, len(ranked), 0.0),
+        )
         if level >= 2:
-            package["imports"] = self._imports(selected_paths, max_items=max(8, budget // 140))
-            package["nearby_dependencies"] = self._nearby_dependencies(
+            pack.imports = self._imports(selected_paths, max_items=max(8, budget // 140))
+            pack.nearby_dependencies = self._nearby_dependencies(
                 selected_paths, max_items=max(8, budget // 140)
             )
         if level >= 3:
-            package["snippets"] = self._snippets(selected, max_items=max(2, budget // 600))
-        package["budget"] = {"requested_tokens": budget, "approximate_tokens": 0}
-        return package
+            pack.snippets = self._snippets(selected, max_items=max(2, budget // 600))
+        pack.metrics.retrieval_latency_seconds = time.perf_counter() - started
+        return pack
 
     def _architecture(self) -> list[dict[str, Any]]:
         rows = self.connection.execute(
@@ -283,6 +356,26 @@ class ContextRetriever:
                 "source": str(row["source"]),
             }
             for row in self.connection.execute(query, values)
+        ]
+
+    def _routes(self, paths: set[str], max_items: int) -> list[dict[str, Any]]:
+        if not paths:
+            return []
+        placeholders = ",".join("?" for _ in paths)
+        query = f"""SELECT f.path AS file, r.method, r.path, r.handler, r.line, r.confidence
+                    FROM routes r JOIN files f ON f.id=r.file_id
+                    WHERE f.path IN ({placeholders})
+                    ORDER BY r.confidence DESC, f.path, r.line LIMIT ?"""
+        return [
+            {
+                "file": str(row["file"]),
+                "method": str(row["method"]),
+                "path": str(row["path"]),
+                "handler": row["handler"],
+                "line": int(row["line"]),
+                "confidence": _confidence_label(float(row["confidence"])),
+            }
+            for row in self.connection.execute(query, [*paths, max_items])
         ]
 
     def _imports(self, paths: set[str], max_items: int) -> list[dict[str, Any]]:
@@ -388,6 +481,13 @@ class ContextRetriever:
                 str(row["purpose"]),
                 str(row["language"]),
                 [],
+                {"graph": added},
+                _ranking_explanations(
+                    [
+                        f"graph:{edge['kind']}:{ranked[origin].path}",
+                        "graph terms:" + ",".join(sorted(neighbor_overlap)),
+                    ]
+                ),
             )
         self._expand_structural_dependencies(ranked, by_id)
 
@@ -427,6 +527,10 @@ class ContextRetriever:
                     str(row["purpose"]),
                     str(row["language"]),
                     [],
+                    {"graph": score},
+                    _ranking_explanations(
+                        [f"graph-structural:{edge['kind']}:{origin_file.path}"]
+                    ),
                 )
                 seen.add(neighbor)
                 next_frontier.append(neighbor)
@@ -456,6 +560,51 @@ class ContextRetriever:
             return set()
         return {str(item) for item in value} if isinstance(value, list) else set()
 
+    def _intent_boost(self, intent: list[str], purpose: str, path: str) -> float:
+        path_terms = tokenize(path)
+        boost = 0.0
+        if "test" in intent and purpose == "test":
+            boost += RANKING_WEIGHTS["intent"]
+        if "documentation" in intent and purpose == "documentation":
+            boost += RANKING_WEIGHTS["intent"]
+        if "dependency_change" in intent and purpose == "configuration":
+            boost += RANKING_WEIGHTS["intent"]
+        if "database_change" in intent and (
+            purpose == "migration" or path_terms & {"model", "models", "schema", "migration"}
+        ):
+            boost += RANKING_WEIGHTS["intent"]
+        if "api_change" in intent and path_terms & {"api", "route", "routes", "handler"}:
+            boost += RANKING_WEIGHTS["intent"]
+        if "security" in intent and path_terms & {"auth", "security", "token", "permission"}:
+            boost += RANKING_WEIGHTS["intent"]
+        if "performance" in intent and path_terms & {"benchmark", "cache", "perf", "performance"}:
+            boost += RANKING_WEIGHTS["intent"]
+        return min(boost, RANKING_WEIGHTS["intent"] * 2)
+
+    def _metrics_base(
+        self, selected: list[RankedFile], candidate_count: int, latency_seconds: float
+    ) -> ContextMetrics:
+        row = self.connection.execute(
+            "SELECT COUNT(*) AS file_count, COALESCE(SUM(size), 0) AS total_bytes FROM files"
+        ).fetchone()
+        indexed_files = int(row["file_count"]) if row else 0
+        repository_text_bytes = int(row["total_bytes"]) if row else 0
+        selected_bytes = 0
+        for item in selected:
+            file_row = self.connection.execute(
+                "SELECT size FROM files WHERE path=?", (item.path,)
+            ).fetchone()
+            if file_row:
+                selected_bytes += int(file_row["size"])
+        return ContextMetrics(
+            indexed_files=indexed_files,
+            repository_text_bytes=repository_text_bytes,
+            candidate_files_considered=candidate_count,
+            files_returned=len(selected),
+            selected_file_bytes=selected_bytes,
+            retrieval_latency_seconds=latency_seconds,
+        )
+
 
 def fit_context_to_budget(
     package: dict[str, Any],
@@ -481,15 +630,9 @@ def fit_context_to_budget(
         "nearby_dependencies": 0,
         "imports": 0,
     }
+    truncated = False
     while True:
-        rendered = renderer(package)
-        tokens = approximate_tokens(rendered)
-        budget_info = package.get("budget")
-        if isinstance(budget_info, dict):
-            budget_info["approximate_tokens"] = tokens
-            rendered = renderer(package)
-            tokens = approximate_tokens(rendered)
-            budget_info["approximate_tokens"] = tokens
+        rendered, tokens = _stabilize_render_state(package, renderer, budget, truncated)
         if tokens <= budget:
             return package, rendered
         removed = False
@@ -498,6 +641,7 @@ def fit_context_to_budget(
             if isinstance(values, list) and len(values) > minimum.get(key, 0):
                 values.pop()
                 removed = True
+                truncated = True
                 break
         if not removed:
             # Only fixed high-signal fields remain. This can happen with a very long task string.
@@ -517,3 +661,102 @@ def _expand_terms(terms: set[str]) -> set[str]:
     for term in terms:
         expanded.update(_TERM_ALIASES.get(term, set()))
     return expanded
+
+
+def _add_component(components: dict[str, float], name: str, amount: float) -> None:
+    components[name] = components.get(name, 0.0) + amount
+
+
+def _ranking_explanations(reasons: list[str]) -> list[str]:
+    output: list[str] = []
+    for reason in reasons:
+        if reason.startswith("symbol:"):
+            output.append(f"exact symbol match: {reason.removeprefix('symbol:')}")
+        elif reason.startswith("path:") or reason.startswith("path-specific:"):
+            output.append(f"path match: {reason.split(':', 1)[1]}")
+        elif reason == "filename":
+            output.append("filename matches a task term")
+        elif reason == "path phrase":
+            output.append("full task phrase appears in the file path")
+        elif reason == "test relevance":
+            output.append("relevant test file for a fix/test task")
+        elif reason == "configuration relevance":
+            output.append("configuration file matches dependency/configuration task terms")
+        elif reason == "migration relevance":
+            output.append("database migration relevance")
+        elif reason == "git changed":
+            output.append("recent-change relevance from saved Git working-tree state")
+        elif reason.startswith("graph:") or reason.startswith("graph-structural:"):
+            output.append("graph proximity through " + reason.split(":", 1)[1])
+        elif reason.startswith("task-intent boost:"):
+            output.append("task-intent boost: " + reason.split(":", 1)[1])
+        else:
+            output.append(reason)
+    return output
+
+
+def _update_render_metrics(
+    package: dict[str, Any], rendered: str, requested_budget: int, truncated: bool
+) -> None:
+    metrics = package.get("metrics")
+    if not isinstance(metrics, dict):
+        return
+    task_context = metrics.get("task_context")
+    if isinstance(task_context, dict):
+        task_context["files_returned"] = len(package.get("relevant_files", []))
+        task_context["context_output_bytes"] = len(rendered.encode("utf-8"))
+        task_context["estimated_context_tokens"] = approximate_tokens(rendered)
+        task_context["budget_used_percent"] = _bounded_percent(
+            int(task_context["estimated_context_tokens"]), requested_budget
+        )
+        task_context["truncated"] = truncated
+    reduction = metrics.get("reduction")
+    repository = metrics.get("repository")
+    if isinstance(reduction, dict) and isinstance(repository, dict):
+        indexed_files = int(repository.get("indexed_files", 0))
+        repository_bytes = int(repository.get("repository_text_bytes", 0))
+        reduction["file_reduction_percent"] = _bounded_reduction(
+            indexed_files, len(package.get("relevant_files", []))
+        )
+        reduction["context_volume_reduction_percent"] = _bounded_reduction(
+            repository_bytes, len(rendered.encode("utf-8"))
+        )
+
+
+def _stabilize_render_state(
+    package: dict[str, Any],
+    renderer: Callable[[dict[str, Any]], str],
+    budget: int,
+    truncated: bool,
+) -> tuple[str, int]:
+    rendered = renderer(package)
+    for _ in range(5):
+        tokens = approximate_tokens(rendered)
+        budget_info = package.get("budget")
+        if isinstance(budget_info, dict):
+            budget_info["approximate_tokens"] = tokens
+            budget_info["truncated"] = truncated
+        _update_render_metrics(package, rendered, budget, truncated)
+        next_rendered = renderer(package)
+        if next_rendered == rendered:
+            return rendered, tokens
+        rendered = next_rendered
+    tokens = approximate_tokens(rendered)
+    budget_info = package.get("budget")
+    if isinstance(budget_info, dict):
+        budget_info["approximate_tokens"] = tokens
+        budget_info["truncated"] = truncated
+    _update_render_metrics(package, rendered, budget, truncated)
+    return rendered, tokens
+
+
+def _bounded_percent(numerator: int | float, denominator: int | float) -> float:
+    if denominator <= 0:
+        return 0.0
+    return round(max(0.0, min(100.0, (float(numerator) / float(denominator)) * 100.0)), 2)
+
+
+def _bounded_reduction(total: int | float, selected: int | float) -> float:
+    if total <= 0:
+        return 0.0
+    return round(max(0.0, min(100.0, (1.0 - float(selected) / float(total)) * 100.0)), 2)

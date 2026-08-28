@@ -19,15 +19,21 @@ def evaluate(root: Path, tasks: list[dict]):
         retriever = ContextRetriever(db)
         results = []
         for task in tasks:
-            start = time.time()
             for budget in (500, 1000, 2000, 5000):
                 for level in (1, 2, 3):
+                    start = time.time()
                     package = retriever.build_context(task["query"], budget, level)
                     _, rendered = fit_context_to_budget(
                         package, lambda v: render_context(v, "json"), budget
                     )
                     approx = package.get("budget", {}).get("approximate_tokens", None)
                     selected = [f["path"] for f in package.get("relevant_files", [])]
+                    context_metrics = package.get("metrics", {})
+                    task_context = (
+                        context_metrics.get("task_context", {})
+                        if isinstance(context_metrics, dict)
+                        else {}
+                    )
                     results.append(
                         {
                             "repo": str(root),
@@ -35,6 +41,11 @@ def evaluate(root: Path, tasks: list[dict]):
                             "budget": budget,
                             "level": level,
                             "approx_tokens": approx,
+                            "files_returned": len(selected),
+                            "context_bytes": task_context.get("context_output_bytes", 0),
+                            "estimated_context_tokens": task_context.get(
+                                "estimated_context_tokens", approx
+                            ),
                             "selected_files": selected,
                             "elapsed_ms": int((time.time() - start) * 1000),
                         }

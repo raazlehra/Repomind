@@ -50,6 +50,12 @@ class FreshnessResult:
             "checked_files": self.checked_files,
             "hashed_files": self.hashed_files,
             "duration_seconds": round(self.duration_seconds, 4),
+            "files_scanned": self.checked_files,
+            "files_changed": self.created + self.modified + self.renamed + self.deleted,
+            "files_reused": max(0, self.checked_files - self.refreshed),
+            "files_reparsed": self.refreshed,
+            "new_files": self.created,
+            "deleted_files": self.deleted,
         }
         if self.warning:
             data["warning"] = self.warning

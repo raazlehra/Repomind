@@ -21,6 +21,7 @@ from repomind.map import build_repository_map, render_repository_map
 from repomind.queries import callers, dependencies, impact, snippets, symbol_details
 from repomind.repository import resolve_repository
 from repomind.retrieval import ContextRetriever, fit_context_to_budget
+from repomind.services import stats as service_stats
 from repomind.watcher import watch_repository, watchdog_available
 
 _FORMATS = ("text", "markdown", "json")
@@ -52,6 +53,10 @@ def build_parser() -> argparse.ArgumentParser:
     _repository_argument(status_parser)
     status_parser.add_argument("--format", choices=_FORMATS, default="text")
 
+    stats_parser = subparsers.add_parser("stats", help="show repository intelligence metrics")
+    _repository_argument(stats_parser)
+    stats_parser.add_argument("--format", choices=_FORMATS, default="text")
+
     watch_parser = subparsers.add_parser("watch", help="watch files and incrementally refresh")
     _repository_argument(watch_parser)
     watch_parser.add_argument("--debounce", type=float, default=0.5)
@@ -73,6 +78,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--mode", choices=("minimal", "balanced", "deep"), default="balanced"
     )
     context_parser.add_argument("--level", type=int, choices=(1, 2, 3), default=1)
+    context_parser.add_argument("--explain", action="store_true", help="include ranking explanations")
     context_parser.add_argument("--format", choices=_FORMATS, default="text")
 
     audit_parser = subparsers.add_parser(
@@ -173,6 +179,9 @@ def _dispatch(args: argparse.Namespace) -> int:
             }
         print(render_records(data, str(args.format)), end="")
         return 0
+    if command == "stats":
+        print(render_records(service_stats(str(args.repository)), str(args.format)), end="")
+        return 0
     if command == "watch":
         root = resolve_repository(Path(args.repository))
         config = Config.load(root)
@@ -208,7 +217,9 @@ def _dispatch(args: argparse.Namespace) -> int:
         with IndexDatabase(root) as database:
             retriever = ContextRetriever(database)
             budget = retriever.resolve_budget(str(args.mode), args.budget, config.context_budget)
-            package = retriever.build_context(str(args.task), budget, int(args.level))
+            package = retriever.build_context(
+                str(args.task), budget, int(args.level), explain=bool(args.explain)
+            )
             _, rendered = fit_context_to_budget(
                 package,
                 lambda value: render_context(value, str(args.format)),

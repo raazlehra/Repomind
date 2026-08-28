@@ -1,14 +1,14 @@
 # RepoMind
 
-RepoMind is a local-first persistent code context engine for AI coding agents. It indexes repository structure once, updates changed files incrementally, and retrieves a compact, task-specific package instead of dumping a repository into an agent prompt.
+RepoMind is a local-first, portable repository intelligence layer for AI coding agents. It indexes repository structure once, updates changed files incrementally, and retrieves a compact, task-specific ContextPack instead of dumping a repository into an agent prompt.
 
 ```text
 Repository -> RepoMind persistent index -> task context -> coding agent
 ```
 
-The guiding idea is **index once, update incrementally, retrieve only what is relevant**.
+The guiding idea is **index once. Understand everywhere.**
 
-RepoMind is not a coding agent and does not replace Codex or source inspection. Its summaries guide file discovery; actual source is always authoritative. RepoMind does **not** promise or guarantee reductions in OpenAI/Codex account credits or usage limits. Its measurable goals are fewer unnecessary context tokens, scans, file reads, repeated architecture discovery steps, and irrelevant files supplied to agents.
+RepoMind is not a coding agent and does not replace Codex, modern agent indexes, or source inspection. It complements agent-native context systems with persistent, local-first, structured, agent-neutral repository intelligence that can travel through CLI and MCP workflows. Its summaries guide file discovery; actual source is always authoritative. RepoMind does **not** promise or guarantee reductions in OpenAI/Codex account credits or usage limits. Its measurable goals are fewer unnecessary context tokens, scans, file reads, repeated architecture discovery steps, and irrelevant files supplied to agents.
 
 ## Features
 
@@ -21,8 +21,11 @@ RepoMind is not a coding agent and does not replace Codex or source inspection. 
 - Imports, calls, inheritance, routes, test-targets, and confidence-scored dependency edges
 - Deterministic architecture detection from manifests and configuration
 - Task ranking using paths, symbols, lexical overlap, graph proximity, tests, purpose, and Git changes
+- Stable ContextPack output with deterministic task intent, ranked file groups, route/dependency context, optional explanations, and provider-neutral metrics
+- Optional explainable ranking with score components for path, symbol, graph, dependency, route, test, intent, and freshness signals
 - Automatic retrieval-time freshness checks for saved working-tree changes
-- Explicit approximate-token budgets and progressive context levels
+- Explicit approximate-token budgets, budget truncation reporting, and progressive context levels
+- Repository/context reduction metrics using local character-based token estimates
 - Git-aware status without changing Git state
 - Event-driven optional watch mode with debouncing
 - Codex skill and idempotent `AGENTS.md` integration
@@ -56,8 +59,10 @@ Without `watchdog`, `repomind watch` is unavailable. Retrieval-time freshness ch
 cd existing-repository
 repomind init
 repomind status
+repomind stats
 repomind map --depth 3 --symbols
 repomind context "fix authentication refresh token bug"
+repomind context "fix authentication refresh token bug" --explain
 repomind audit . --output reports/audit.md --json reports/audit.json
 ```
 
@@ -96,6 +101,7 @@ If automatic freshness reaches a current but partial state because one or more f
 | `repomind refresh` | Hash and reparse only created/modified files; remove deleted files |
 | `repomind watch` | Debounce filesystem changes and refresh proactively |
 | `repomind status` | Show indexed, changed, deleted, new, rename, and health counts |
+| `repomind stats` | Show repository intelligence metrics, estimated repository tokens, relationships, routes, and freshness reuse counts |
 | `repomind map` | Compact file map, optionally with symbols or JSON |
 | `repomind context "task"` | Retrieve budgeted task context |
 | `repomind audit [path]` | Generate a Markdown repository audit and optional JSON output |
@@ -143,6 +149,15 @@ Progressive disclosure:
 - **Level 3**: selected bounded source snippets
 
 Use `--level 1`, `--level 2`, or `--level 3`.
+
+Use `--explain` when you need inspectable ranking diagnostics:
+
+```bash
+repomind context "fix refresh token" --explain --format markdown
+repomind context "fix refresh token" --explain --format json
+```
+
+JSON output preserves the existing top-level context fields and adds structured `intent`, grouped files, `routes`, `metrics`, and, when requested, per-file `explanations` and `score_breakdown`. Metrics report indexed files, repository text bytes represented, candidate files considered, files returned, rendered context bytes, estimated context tokens, requested budget, truncation state, retrieval latency, and file/context-volume reduction percentages. Token figures use a provider-neutral character-based heuristic and are labelled as estimates.
 
 ## Configuration
 
@@ -198,7 +213,7 @@ pip install -e .
 repomind mcp
 ```
 
-The MCP server uses standard stdio transport and exposes status, context, symbol, callers, dependencies, impact, snippets, refresh, and map tools. Start with `repomind_status`, then request `repomind_context` at level 1 for the task. Context, symbol, dependency, impact, snippet, and map tools refresh stale saved changes before reading the index. RepoMind is a discovery accelerator; agents should still inspect actual source files before edits. See [docs/MCP.md](docs/MCP.md).
+The MCP server uses standard stdio transport and exposes status, context, stats, symbol, callers, dependencies, impact, snippets, refresh, and map tools. Start with `repomind_status`, then request `repomind_context` at level 1 for the task. Context accepts an optional `explain` flag. Context, symbol, dependency, impact, snippet, and map tools refresh stale saved changes before reading the index. RepoMind is a discovery accelerator; agents should still inspect actual source files before edits. See [docs/MCP.md](docs/MCP.md).
 
 ## Privacy and security model
 
