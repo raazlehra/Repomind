@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="RepoMind">
+  <rect width="64" height="64" rx="10" fill="#111827"/>
+  <path d="M16 17h17c8 0 13 4 13 11 0 5-3 9-8 10l10 9H36l-9-8h-1v8H16V17Zm10 9v6h7c2 0 3-1 3-3s-1-3-3-3h-7Z" fill="#54d6bd"/>
+  <path d="M16 50h32v5H16v-5Z" fill="#f8fafc"/>
+</svg>
