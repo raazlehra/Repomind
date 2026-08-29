@@ -870,12 +870,26 @@ details p {
     grid-template-columns: 1fr;
   }
 
-  .flow-list li::after {
+  .flow-shell {
+    padding: 0.85rem;
+  }
+
+  .flow-list {
+    gap: 2.7rem;
+  }
+
+  .flow-list li {
+    min-height: 92px;
+  }
+
+  .flow-list li:not(:last-child)::after {
     content: "\2193";
     right: auto;
     left: 50%;
     top: auto;
-    bottom: -0.62rem;
+    bottom: -2rem;
+    width: 1.4rem;
+    height: 1.4rem;
     transform: translateX(-50%);
   }
 
