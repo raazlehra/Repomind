@@ -11,7 +11,10 @@
   --accent-soft: #d7f6ef;
   --code-bg: #101820;
   --code-ink: #d6f5ee;
+  --grid-line: rgba(15, 118, 110, 0.11);
+  --grid-line-strong: rgba(15, 118, 110, 0.18);
   --shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
+  --shadow-soft: 0 16px 48px rgba(15, 23, 42, 0.08);
   --radius: 8px;
   --max: 1180px;
 }
@@ -29,7 +32,10 @@
     --accent-soft: #143f39;
     --code-bg: #071014;
     --code-ink: #d7fff5;
+    --grid-line: rgba(84, 214, 189, 0.07);
+    --grid-line-strong: rgba(84, 214, 189, 0.14);
     --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+    --shadow-soft: 0 16px 48px rgba(0, 0, 0, 0.22);
   }
 }
 
@@ -43,7 +49,13 @@ html {
 
 body {
   margin: 0;
-  background: var(--bg);
+  background:
+    radial-gradient(circle at 18% 8%, color-mix(in srgb, var(--accent) 16%, transparent) 0 18rem, transparent 32rem),
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+    var(--bg);
+  background-attachment: fixed;
+  background-size: auto, 48px 48px, 48px 48px, auto;
   color: var(--ink);
   font-family:
     ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -82,7 +94,9 @@ summary:focus-visible {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  background:
+    linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 7%, transparent), transparent),
+    color-mix(in srgb, var(--bg) 90%, transparent);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(16px);
 }
@@ -144,8 +158,23 @@ summary:focus-visible {
 }
 
 .nav-links a {
+  position: relative;
   text-decoration: none;
   font-size: 0.95rem;
+  transition: color 150ms ease;
+}
+
+.nav-links a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.45rem;
+  height: 2px;
+  transform: scaleX(0);
+  transform-origin: left;
+  background: var(--accent);
+  transition: transform 150ms ease;
 }
 
 .nav-links a:hover,
@@ -155,16 +184,44 @@ summary:focus-visible {
   color: var(--accent-strong);
 }
 
+.nav-links a:hover::after {
+  transform: scaleX(1);
+}
+
 .section {
+  position: relative;
   padding: 6.5rem 0;
 }
 
+.section + .section::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--grid-line-strong), transparent);
+}
+
 .section-muted {
-  background: var(--surface-muted);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 5%, transparent), transparent 36%),
+    var(--surface-muted);
 }
 
 .hero {
+  overflow: hidden;
   padding-top: 7rem;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 4rem 0 auto;
+  height: 34rem;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 68% 34%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 24rem),
+    linear-gradient(90deg, transparent 0 49%, var(--grid-line-strong) 49% 50%, transparent 50% 100%);
+  opacity: 0.78;
 }
 
 .hero-grid,
@@ -172,6 +229,7 @@ summary:focus-visible {
 .demo-grid,
 .validation-grid,
 .footer-grid {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 0.78fr);
   gap: clamp(2rem, 5vw, 5rem);
@@ -269,11 +327,13 @@ p {
   transition:
     transform 150ms ease,
     border-color 150ms ease,
-    background 150ms ease;
+    background 150ms ease,
+    box-shadow 150ms ease;
 }
 
 .button:hover {
   transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
 }
 
 .button-primary {
@@ -282,9 +342,18 @@ p {
   border-color: var(--ink);
 }
 
+.button-primary:hover {
+  border-color: var(--accent);
+}
+
 .button-secondary {
-  background: var(--surface);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 86%, white), var(--surface));
   color: var(--ink);
+}
+
+.button-secondary:hover {
+  border-color: var(--accent);
 }
 
 .hero-panel {
@@ -293,11 +362,28 @@ p {
 }
 
 .terminal-window {
+  position: relative;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
   border-radius: var(--radius);
-  background: var(--code-bg);
-  box-shadow: var(--shadow);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 5rem),
+    var(--code-bg);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.025) inset,
+    0 22px 70px color-mix(in srgb, var(--accent) 13%, transparent),
+    var(--shadow-soft);
+}
+
+.terminal-window::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.04), transparent);
+  transform: translateX(-70%);
+  opacity: 0.55;
 }
 
 .terminal-topbar {
@@ -306,7 +392,8 @@ p {
   align-items: center;
   min-height: 2.2rem;
   padding: 0 0.8rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.11);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.025);
 }
 
 .terminal-topbar span {
@@ -345,11 +432,18 @@ code {
 .metric-grid span {
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: var(--surface);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 86%, white), var(--surface));
   color: var(--muted);
   padding: 0.45rem 0.72rem;
   font-size: 0.88rem;
   font-weight: 750;
+}
+
+.local-badges span {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+  color: var(--ink);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .content-stack {
@@ -378,11 +472,33 @@ details,
 .beta-band {
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: var(--surface);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 94%, white), var(--surface));
 }
 
 .feature-card {
+  position: relative;
   padding: 1.2rem;
+  transition:
+    transform 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.feature-card::before {
+  content: "";
+  display: block;
+  width: 1.65rem;
+  height: 0.18rem;
+  margin-bottom: 1rem;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.feature-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  box-shadow: var(--shadow-soft);
 }
 
 .feature-card p,
@@ -393,10 +509,26 @@ details p {
 }
 
 .flow-shell {
+  position: relative;
   padding: 1rem;
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+}
+
+.flow-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0 8%, var(--grid-line) 8% 8.2%, transparent 8.2% 100%),
+    linear-gradient(var(--grid-line) 1px, transparent 1px);
+  background-size: 100% 100%, 32px 32px;
+  opacity: 0.62;
 }
 
 .flow-list {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.75rem;
@@ -414,9 +546,11 @@ details p {
   padding: 0.85rem;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: var(--bg);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg) 88%, var(--surface)), var(--bg));
   color: var(--ink);
   font-weight: 800;
+  box-shadow: 0 1px 0 color-mix(in srgb, white 20%, transparent) inset;
 }
 
 .flow-list li::before {
@@ -443,16 +577,19 @@ details p {
   transform: translateY(-50%);
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: var(--surface);
+  background: var(--code-bg);
   color: var(--accent-strong);
   font-size: 0.82rem;
+  box-shadow: 0 0 0 4px var(--surface);
 }
 
 .flow-note {
+  position: relative;
   margin-top: 1rem;
   border-left: 4px solid var(--accent);
   padding: 0.85rem 1rem;
-  background: var(--accent-soft);
+  background:
+    linear-gradient(90deg, var(--accent-soft), color-mix(in srgb, var(--accent-soft) 45%, transparent));
   color: var(--ink);
 }
 
@@ -485,8 +622,10 @@ details p {
 .result-note {
   min-height: auto;
   padding: 1.2rem;
-  background: var(--surface);
-  background-image: none;
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--line));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent-soft) 42%, transparent), transparent),
+    var(--surface);
   text-align: left;
 }
 
@@ -534,12 +673,35 @@ details p {
 }
 
 .price-card {
+  position: relative;
   padding: 1.25rem;
+  transition:
+    transform 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.price-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+  box-shadow: var(--shadow-soft);
 }
 
 .price-card-featured {
   border-color: var(--accent);
-  box-shadow: var(--shadow);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent) inset,
+    0 22px 70px color-mix(in srgb, var(--accent) 12%, transparent),
+    var(--shadow-soft);
+}
+
+.price-card-featured::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 25%, transparent));
 }
 
 .featured-label,
@@ -604,6 +766,14 @@ details p {
 
 details {
   padding: 1rem 1.1rem;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+details[open] {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+  box-shadow: var(--shadow-soft);
 }
 
 summary {
@@ -612,12 +782,19 @@ summary {
   font-weight: 850;
 }
 
+summary::marker {
+  color: var(--accent);
+}
+
 details p {
   margin: 0.8rem 0 0;
 }
 
 .footer {
   border-top: 1px solid var(--line);
+  background:
+    linear-gradient(90deg, transparent, var(--grid-line), transparent),
+    color-mix(in srgb, var(--bg) 96%, var(--surface));
   padding: 2rem 0;
 }
 
