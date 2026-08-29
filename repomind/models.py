@@ -89,6 +89,23 @@ class ArchitectureFact:
     confidence: float = 1.0
 
 
+@dataclass(frozen=True, slots=True)
+class MemoryRecord:
+    id: int | None
+    key: str
+    value: str
+    category: str
+    confidence: float
+    source_type: str
+    source_paths: tuple[str, ...]
+    source_symbols: tuple[str, ...] = ()
+    evidence_hash: str = ""
+    created_at: str = ""
+    updated_at: str = ""
+    last_verified_at: str = ""
+    status: str = "valid"
+
+
 @dataclass(slots=True)
 class RankedFile:
     path: str

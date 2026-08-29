@@ -95,6 +95,19 @@ def create_server(debug: bool = False) -> MCPServer:
         """Return repository intelligence metrics from the current index."""
         return safe(services.stats, repository)
 
+    @server.tool()
+    def repomind_memory(
+        repository: str,
+        task: str | None = None,
+        category: str | None = None,
+        status: str | None = None,
+        limit: int = 10,
+    ) -> dict[str, Any]:
+        """Return bounded repository memory, optionally filtered or relevant to a task."""
+        if task:
+            return safe(services.memory_for_task, repository, task, limit)
+        return safe(services.memory_list, repository, category, status, limit)
+
     return server
 
 

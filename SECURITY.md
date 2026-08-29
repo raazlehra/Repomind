@@ -43,9 +43,12 @@ The SQLite index is stored in `.repomind/index.sqlite3` in the repository and ma
 - relative paths and file metadata;
 - symbol names, signatures, and short docstrings;
 - imports, routes, relationship evidence, and architecture facts;
+- repository memory facts with source paths, optional source symbols, evidence hashes, timestamps, category, confidence, source type, and status;
 - Git branch/HEAD/change paths.
 
-It does not intentionally store entire source files or whole ASTs. Source snippets are read from the working tree on demand and are not persisted by the snippet command.
+It does not intentionally store entire source files, whole ASTs, or large evidence payloads. Source snippets are read from the working tree on demand and are not persisted by the snippet command.
+
+Repository Memory is local and evidence-backed. Automatic memory extraction only uses indexed non-secret files and refuses automatic facts without source evidence. Manual memory must be added explicitly and is marked `manual`.
 
 Protect the index with the same local access controls as the repository. Normally add `.repomind/` to `.gitignore`; do not commit it if paths or structural metadata are sensitive.
 
@@ -67,6 +70,12 @@ repomind init --force
 ```
 
 `--force` removes RepoMind's SQLite database files only, not arbitrary repository files.
+
+## Repository Memory privacy
+
+Automatic memory must not capture secret values. Evidence paths are checked against secret-like names including `.env`, `.env.*`, `*.pem`, `*.key`, credential files, secret files, and private-key names. Included files do not bypass those protections.
+
+Evidence hashes are computed from indexed file hashes so validation can detect changed evidence without rereading the whole repository. If evidence changes, automatic memory is marked `needs_validation`; if evidence disappears, it is marked `stale`. RepoMind marks uncertainty instead of keeping automatic facts silently valid.
 
 ## Reporting vulnerabilities
 

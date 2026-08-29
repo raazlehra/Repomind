@@ -13,6 +13,16 @@ from repomind.freshness import ensure_index_fresh
 from repomind.git import inspect_git
 from repomind.indexer import Indexer
 from repomind.map import build_repository_map
+from repomind.memory import (
+    add_manual_memory,
+    list_memory,
+    memory_counts,
+    relevant_memory_for_task,
+    remove_memory,
+    show_memory,
+    stale_memory,
+    validate_memory,
+)
 from repomind.queries import callers, dependencies, impact, snippets, symbol_details
 from repomind.repository import resolve_repository
 from repomind.retrieval import ContextRetriever, fit_context_to_budget
@@ -58,6 +68,7 @@ def status(repository: str) -> dict[str, Any]:
             "refresh_recommended": bool(changed or new or deleted),
             "symbols": counts["symbols"],
             "dependencies": counts["dependencies"],
+            "memory": memory_counts(database),
             "last_refresh": database.get_meta("last_refresh_at"),
         }
 
@@ -110,6 +121,7 @@ def stats(repository: str) -> dict[str, Any]:
             "token_estimation_method": TOKEN_ESTIMATION_METHOD,
             "last_refresh": database.get_meta("last_refresh_at"),
             "freshness": freshness.as_dict(),
+            "memory": memory_counts(database),
         }
 
 
@@ -195,7 +207,94 @@ def refresh(repository: str) -> dict[str, Any]:
         "elapsed_seconds": round(time.perf_counter() - start, 4),
         "index_health": health["index_health"],
         "indexed_file_count": health["indexed_file_count"],
+        "memory": health.get("memory", {}),
     }
+
+
+def memory_add(
+    repository: str,
+    value: str,
+    category: str,
+    key: str | None = None,
+    source_paths: list[str] | None = None,
+    source_symbols: list[str] | None = None,
+) -> dict[str, Any]:
+    root = _canonical_repository(repository)
+    with IndexDatabase(root) as database:
+        record = add_manual_memory(
+            database,
+            value,
+            category,
+            key,
+            tuple(source_paths or ()),
+            tuple(source_symbols or ()),
+        )
+    return {"repository": str(root), "memory": record}
+
+
+def memory_list(
+    repository: str,
+    category: str | None = None,
+    status_filter: str | None = None,
+    limit: int = 50,
+) -> dict[str, Any]:
+    root = _canonical_repository(repository)
+    freshness = ensure_index_fresh(root)
+    with IndexDatabase(root) as database:
+        return {
+            "repository": str(root),
+            "freshness": freshness.as_dict(),
+            "memory": list_memory(database, category, status_filter, limit),
+            "counts": memory_counts(database),
+        }
+
+
+def memory_show(repository: str, identifier: str) -> dict[str, Any]:
+    root = _canonical_repository(repository)
+    with IndexDatabase(root) as database:
+        return {"repository": str(root), "memory": show_memory(database, identifier)}
+
+
+def memory_remove(repository: str, identifier: str) -> dict[str, Any]:
+    root = _canonical_repository(repository)
+    with IndexDatabase(root) as database:
+        result = remove_memory(database, identifier)
+    return {"repository": str(root), **result}
+
+
+def memory_validate(repository: str, identifier: str | None = None) -> dict[str, Any]:
+    root = _canonical_repository(repository)
+    freshness = ensure_index_fresh(root)
+    with IndexDatabase(root) as database:
+        result = validate_memory(database, identifier)
+        result["counts"] = memory_counts(database)
+        result["freshness"] = freshness.as_dict()
+    return {"repository": str(root), **result}
+
+
+def memory_stale(repository: str, limit: int = 50) -> dict[str, Any]:
+    root = _canonical_repository(repository)
+    freshness = ensure_index_fresh(root)
+    with IndexDatabase(root) as database:
+        return {
+            "repository": str(root),
+            "freshness": freshness.as_dict(),
+            "memory": stale_memory(database, limit),
+            "counts": memory_counts(database),
+        }
+
+
+def memory_for_task(repository: str, task: str, limit: int = 10) -> dict[str, Any]:
+    root = _canonical_repository(repository)
+    freshness = ensure_index_fresh(root)
+    with IndexDatabase(root) as database:
+        return {
+            "repository": str(root),
+            "task": task,
+            "freshness": freshness.as_dict(),
+            "memory": relevant_memory_for_task(database, task, limit),
+            "counts": memory_counts(database),
+        }
 
 
 def repository_map(

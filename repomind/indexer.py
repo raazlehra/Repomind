@@ -13,6 +13,7 @@ from repomind.database import INDEX_DIRECTORY, INDEX_FILENAME, IndexDatabase, ut
 from repomind.errors import RepoMindError
 from repomind.git import inspect_git
 from repomind.graph import rebuild_dependency_graph
+from repomind.memory import sync_automatic_memory
 from repomind.models import ChangeSet, ScannedFile
 from repomind.parsers import ParserRegistry
 from repomind.scanner import RepositoryScanner
@@ -61,21 +62,25 @@ class Indexer:
         scanned = list(self.scanner.scan())
         total = len(scanned)
         parse_errors = 0
-        with IndexDatabase(self.root, create=True) as database, database.transaction():
-            for index, item in enumerate(scanned, start=1):
-                if progress:
-                    progress(index, item.path)
-                result = self.parsers.parse(item.absolute_path, item.path, item.language)
-                if result.parse_error:
-                    parse_errors += 1
-                database.upsert_file(item, hash_file(item.absolute_path), result)
-            rebuild_dependency_graph(database)
-            database.replace_architecture(
-                detect_architecture(self.root, (item.path for item in scanned))
-            )
-            self._record_git(database)
-            database.set_meta("last_refresh_at", utc_now())
-            database.set_meta("last_refresh_parsed", str(total))
+        with IndexDatabase(self.root, create=True) as database:
+            with database.transaction():
+                for index, item in enumerate(scanned, start=1):
+                    if progress:
+                        progress(index, item.path)
+                    result = self.parsers.parse(item.absolute_path, item.path, item.language)
+                    if result.parse_error:
+                        parse_errors += 1
+                    database.upsert_file(item, hash_file(item.absolute_path), result)
+                rebuild_dependency_graph(database)
+                database.replace_architecture(
+                    detect_architecture(self.root, (item.path for item in scanned))
+                )
+                self._record_git(database)
+                database.set_meta("last_refresh_at", utc_now())
+                database.set_meta("last_refresh_parsed", str(total))
+            sync_automatic_memory(database)
+            with database.transaction():
+                database.set_meta("memory_last_sync_at", utc_now())
         duration = time.perf_counter() - start
         created = tuple(item.path for item in scanned)
         return IndexResult(
@@ -169,6 +174,9 @@ class Indexer:
                 self._record_git(database)
                 database.set_meta("last_refresh_at", utc_now())
                 database.set_meta("last_refresh_parsed", str(len(to_parse)))
+            sync_automatic_memory(database)
+            with database.transaction():
+                database.set_meta("memory_last_sync_at", utc_now())
             counts = database.counts()
         duration = time.perf_counter() - start
         return IndexResult(

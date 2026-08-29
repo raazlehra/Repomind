@@ -22,7 +22,9 @@ RepoMind is not a coding agent and does not replace Codex, modern agent indexes,
 - Deterministic architecture detection from manifests and configuration
 - Task ranking using paths, symbols, lexical overlap, graph proximity, tests, purpose, and Git changes
 - Stable ContextPack output with deterministic task intent, ranked file groups, route/dependency context, optional explanations, and provider-neutral metrics
+- Durable Repository Memory for local, evidence-backed facts grounded in indexed files
 - Optional explainable ranking with score components for path, symbol, graph, dependency, route, test, intent, and freshness signals
+- Task-aware memory in ContextPack output, with memory relevance kept bounded below exact source/symbol/path evidence
 - Automatic retrieval-time freshness checks for saved working-tree changes
 - Explicit approximate-token budgets, budget truncation reporting, and progressive context levels
 - Repository/context reduction metrics using local character-based token estimates
@@ -60,6 +62,8 @@ cd existing-repository
 repomind init
 repomind status
 repomind stats
+repomind memory list
+repomind memory add --category architecture "All payment state transitions must go through PaymentService."
 repomind map --depth 3 --symbols
 repomind context "fix authentication refresh token bug"
 repomind context "fix authentication refresh token bug" --explain
@@ -102,6 +106,7 @@ If automatic freshness reaches a current but partial state because one or more f
 | `repomind watch` | Debounce filesystem changes and refresh proactively |
 | `repomind status` | Show indexed, changed, deleted, new, rename, and health counts |
 | `repomind stats` | Show repository intelligence metrics, estimated repository tokens, relationships, routes, and freshness reuse counts |
+| `repomind memory add/list/show/remove/validate/stale` | Manage local evidence-backed repository memory |
 | `repomind map` | Compact file map, optionally with symbols or JSON |
 | `repomind context "task"` | Retrieve budgeted task context |
 | `repomind audit [path]` | Generate a Markdown repository audit and optional JSON output |
@@ -159,6 +164,24 @@ repomind context "fix refresh token" --explain --format json
 
 JSON output preserves the existing top-level context fields and adds structured `intent`, grouped files, `routes`, `metrics`, and, when requested, per-file `explanations` and `score_breakdown`. Metrics report indexed files, repository text bytes represented, candidate files considered, files returned, rendered context bytes, estimated context tokens, requested budget, truncation state, retrieval latency, and file/context-volume reduction percentages. Token figures use a provider-neutral character-based heuristic and are labelled as estimates.
 
+### Repository Memory
+
+Repository Memory stores durable high-level facts that help agents avoid repeatedly rediscovering repository basics. It is local, persistent, agent-neutral, evidence-backed, and freshness-aware. It is not LLM chat memory, a cloud profile, a source of truth without evidence, a secret store, or generated prose summarization.
+
+Automatic memory is intentionally conservative. RepoMind only persists deterministic facts from indexed evidence such as manifests, configuration, CI-style files, route/test layout, and strong source markers. Every automatic memory item stores source paths, optional source symbols, and an evidence hash derived from indexed file hashes. Automatic memory without evidence is rejected.
+
+Manual memory is explicit and marked with `status: manual`:
+
+```bash
+repomind memory add --category architecture --source backend/services/payments.py "All payment state transitions go through PaymentService."
+repomind memory list --category architecture --format json
+repomind memory show <key-or-id>
+repomind memory validate
+repomind memory stale
+```
+
+If automatic evidence changes during refresh, existing facts move to `needs_validation`; if the evidence disappears, they move to `stale`. Manual memory is not deleted or invalidated automatically, though source paths are still checked for secret-like names when the memory is created. ContextPack includes only relevant `valid` and `manual` memory by default and caps the number of records.
+
 ## Configuration
 
 Most repositories need no configuration. Optional `.repomind.toml`:
@@ -214,6 +237,7 @@ repomind mcp
 ```
 
 The MCP server uses standard stdio transport and exposes status, context, stats, symbol, callers, dependencies, impact, snippets, refresh, and map tools. Start with `repomind_status`, then request `repomind_context` at level 1 for the task. Context accepts an optional `explain` flag. Context, symbol, dependency, impact, snippet, and map tools refresh stale saved changes before reading the index. RepoMind is a discovery accelerator; agents should still inspect actual source files before edits. See [docs/MCP.md](docs/MCP.md).
+`repomind_memory` exposes bounded list/search and task-relevant memory retrieval for MCP clients.
 
 ## Privacy and security model
 
@@ -226,6 +250,8 @@ Default operation is entirely local:
 - no source code leaving the machine
 
 Indexing is static. RepoMind does not import, evaluate, build, or execute repository source. See [SECURITY.md](SECURITY.md).
+
+Repository Memory follows the same privacy model. Automatic extraction uses indexed non-secret files only, evidence hashes are built from stored file hashes, and memory records store paths/symbols rather than large evidence payloads or secret values.
 
 ## Benchmarks
 
@@ -247,6 +273,8 @@ The harness measures files selected, represented source bytes, emitted output by
 - Rename detection requires an unambiguous delete/create content-hash match.
 - Watch mode requires the optional `watchdog` extra; RepoMind does not fall back to continuous whole-tree polling.
 - Architecture detection reports only manifest/config evidence and can be incomplete.
+- Repository Memory is conservative and may omit useful facts unless they can be tied to strong indexed evidence or added manually.
+- Automatic memory facts can require validation after evidence changes; RepoMind marks uncertainty instead of guessing replacements.
 - Approximate token counts are not provider tokenizer or billing values.
 - SQLite indexes are local caches and should not normally be committed.
 

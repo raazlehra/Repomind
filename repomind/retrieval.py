@@ -11,6 +11,7 @@ from typing import Any
 from repomind.context_pack import ContextBudget, ContextMetrics, ContextPack
 from repomind.database import IndexDatabase
 from repomind.intent import classify_task_intent
+from repomind.memory import relevant_memory_for_task
 from repomind.models import RankedFile
 from repomind.utils import approximate_tokens, tokenize
 
@@ -28,6 +29,7 @@ RANKING_WEIGHTS = {
     "migration_relevance": 4.0,
     "git_changed": 1.5,
     "intent": 3.0,
+    "memory": 2.0,
 }
 _TERM_ALIASES = {
     "api": {"route", "routes"},
@@ -102,6 +104,7 @@ class ContextRetriever:
         for symbol in symbols:
             symbols_by_file[int(symbol["file_id"])].append(symbol)
         changed = self._git_changed_files()
+        memory_by_path = self._memory_relevance_by_path(task)
         ranked: dict[int, RankedFile] = {}
         for row in files:
             file_id = int(row["id"])
@@ -186,6 +189,11 @@ class ContextRetriever:
                 score += RANKING_WEIGHTS["git_changed"]
                 _add_component(components, "freshness", RANKING_WEIGHTS["git_changed"])
                 reasons.append("git changed")
+            memory_boost = memory_by_path.get(path, 0.0)
+            if memory_boost:
+                score += memory_boost
+                _add_component(components, "memory", memory_boost)
+                reasons.append("memory relevance")
             intent_boost = self._intent_boost(intent_labels, purpose, path)
             if intent_boost:
                 score += intent_boost
@@ -252,6 +260,9 @@ class ContextRetriever:
             context_level=level,
             intent=intent,
             architecture=self._architecture(),
+            memory=relevant_memory_for_task(
+                self.database, task, limit=max(2, min(6, budget // 400))
+            ),
             relevant_files=relevant_files,
             primary_files=[
                 item.path
@@ -560,6 +571,19 @@ class ContextRetriever:
             return set()
         return {str(item) for item in value} if isinstance(value, list) else set()
 
+    def _memory_relevance_by_path(self, task: str) -> dict[str, float]:
+        output: dict[str, float] = {}
+        for item in relevant_memory_for_task(self.database, task, limit=8):
+            paths = item.get("source_paths", ())
+            if not isinstance(paths, (list, tuple)):
+                continue
+            for path in paths:
+                output[str(path)] = min(
+                    RANKING_WEIGHTS["memory"],
+                    output.get(str(path), 0.0) + 0.75,
+                )
+        return output
+
     def _intent_boost(self, intent: list[str], purpose: str, path: str) -> float:
         path_terms = tokenize(path)
         boost = 0.0
@@ -618,6 +642,7 @@ def fit_context_to_budget(
         "imports",
         "relationships",
         "important_symbols",
+        "memory",
         "relevant_files",
         "architecture",
     )
@@ -625,6 +650,7 @@ def fit_context_to_budget(
         "relevant_files": 1,
         "important_symbols": 0,
         "relationships": 0,
+        "memory": 0,
         "architecture": 1,
         "snippets": 0,
         "nearby_dependencies": 0,
@@ -686,6 +712,8 @@ def _ranking_explanations(reasons: list[str]) -> list[str]:
             output.append("database migration relevance")
         elif reason == "git changed":
             output.append("recent-change relevance from saved Git working-tree state")
+        elif reason == "memory relevance":
+            output.append("bounded repository-memory relevance from evidence-backed facts")
         elif reason.startswith("graph:") or reason.startswith("graph-structural:"):
             output.append("graph proximity through " + reason.split(":", 1)[1])
         elif reason.startswith("task-intent boost:"):

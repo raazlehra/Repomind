@@ -55,7 +55,9 @@ SPECIAL_CONFIGS = {
     "Cargo.lock",
     "pom.xml",
     "build.gradle",
+    "build.gradle.kts",
     "settings.gradle",
+    "settings.gradle.kts",
     "package.json",
     "package-lock.json",
     "pnpm-lock.yaml",
@@ -186,6 +188,8 @@ def classify_file(relative: str) -> tuple[str, str, bool] | None:
         or ".test." in name
         or ".spec." in name
     )
+    if name in SPECIAL_CONFIGS or name.startswith(("vite.config.", "next.config.")):
+        return "config", "configuration", is_test
     if suffix in SOURCE_EXTENSIONS:
         language = SOURCE_EXTENSIONS[suffix]
         if is_test:
@@ -197,11 +201,7 @@ def classify_file(relative: str) -> tuple[str, str, bool] | None:
         else:
             purpose = "source"
         return language, purpose, is_test
-    if (
-        name in SPECIAL_CONFIGS
-        or suffix in CONFIG_EXTENSIONS
-        or name.startswith(("vite.config.", "next.config."))
-    ):
+    if suffix in CONFIG_EXTENSIONS:
         return "config", "configuration", is_test
     if suffix in DOC_EXTENSIONS:
         return "documentation", "documentation", is_test
