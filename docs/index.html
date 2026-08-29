@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RepoMind | Local-first repository intelligence for AI coding agents</title>
+    <meta
+      name="description"
+      content="RepoMind builds a persistent local intelligence index of a codebase, keeps it fresh, and gives AI coding agents focused, explainable repository context."
+    />
+    <meta name="theme-color" content="#111827" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="RepoMind" />
+    <meta
+      property="og:description"
+      content="Local-first repository intelligence for AI coding agents. Index once. Understand everywhere."
+    />
+    <meta property="og:site_name" content="RepoMind" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="RepoMind" />
+    <meta
+      name="twitter:description"
+      content="Local-first repository intelligence for AI coding agents."
+    />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="assets/site.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <nav class="nav" aria-label="Primary navigation">
+        <a class="brand" href="#top" aria-label="RepoMind home">
+          <span class="brand-mark" aria-hidden="true">RM</span>
+          <span>RepoMind</span>
+        </a>
+        <div class="nav-links">
+          <a href="#features">Features</a>
+          <a href="#how-it-works">How it works</a>
+          <a href="#pricing">Services</a>
+          <a href="#faq">FAQ</a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero section" id="top">
+        <div class="section-inner hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow">Local-first repository intelligence</p>
+            <h1>RepoMind</h1>
+            <p class="hero-lede">Local-first repository intelligence for AI coding agents.</p>
+            <p class="hero-kicker">Index once. Understand everywhere.</p>
+            <p class="hero-text">
+              RepoMind builds a persistent local intelligence index of a codebase, keeps it fresh
+              as files change, and gives coding agents focused, explainable repository context.
+            </p>
+            <div class="hero-actions" aria-label="Primary actions">
+              <a class="button button-primary" href="https://github.com/raazlehra/Repomind">
+                View on GitHub
+              </a>
+              <a
+                class="button button-secondary"
+                href="https://github.com/raazlehra/Repomind/blob/main/docs/BETA_TESTING.md"
+              >
+                Join / Test Beta
+              </a>
+            </div>
+          </div>
+
+          <div class="hero-panel" aria-label="RepoMind local workflow preview">
+            <div class="terminal-window">
+              <div class="terminal-topbar" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </div>
+              <pre><code>$ repomind init
+local SQLite index initialized
+
+$ repomind context "fix authentication bug" --explain
+ContextPack
+  ranked files
+  symbols and relationships
+  tests and likely impact
+  explanation signals
+
+$ repomind memory list
+evidence-backed repository memory</code></pre>
+            </div>
+            <div class="local-badges" aria-label="Local-first properties">
+              <span>No telemetry</span>
+              <span>No source upload</span>
+              <span>No AI API required</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-muted" id="problem">
+        <div class="section-inner split">
+          <div>
+            <p class="eyebrow">The problem</p>
+            <h2>Coding agents keep rediscovering the same repository facts.</h2>
+          </div>
+          <div class="content-stack">
+            <p>
+              Agents often need to rediscover structure, important files, symbols, dependencies,
+              callers, tests, routes, and architecture facts before they can make a focused edit.
+            </p>
+            <p>
+              RepoMind makes that repository intelligence persistent and reusable, while keeping the
+              source tree authoritative.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="features">
+        <div class="section-inner">
+          <div class="section-heading">
+            <p class="eyebrow">Capabilities</p>
+            <h2>Built for practical agent discovery.</h2>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <h3>Automatic Freshness</h3>
+              <p>Read commands check saved changes before answering, so context can reflect current files.</p>
+            </article>
+            <article class="feature-card">
+              <h3>Task-aware ContextPack</h3>
+              <p>Focused context for a coding task, including likely files, symbols, tests, and relationships.</p>
+            </article>
+            <article class="feature-card">
+              <h3>Explainable Retrieval</h3>
+              <p>Ranking can include inspectable signals such as path, symbol, graph, route, and memory evidence.</p>
+            </article>
+            <article class="feature-card">
+              <h3>Repository Memory</h3>
+              <p>Durable local facts with provenance, confidence, evidence paths, and freshness state.</p>
+            </article>
+            <article class="feature-card">
+              <h3>Dependency / Caller / Impact Analysis</h3>
+              <p>Conservative static relationships help agents inspect nearby dependencies and likely impact.</p>
+            </article>
+            <article class="feature-card">
+              <h3>MCP Integration</h3>
+              <p>A local MCP server exposes status, context, stats, memory, symbols, callers, dependencies, and impact.</p>
+            </article>
+            <article class="feature-card">
+              <h3>Local-first / Private</h3>
+              <p>The index lives in local SQLite. Normal operation does not upload source or require telemetry.</p>
+            </article>
+            <article class="feature-card">
+              <h3>Provider-neutral Metrics</h3>
+              <p>Stats report local estimates for observability, not provider billing tokens or credit savings.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-muted" id="how-it-works">
+        <div class="section-inner">
+          <div class="section-heading">
+            <p class="eyebrow">How RepoMind works</p>
+            <h2>A local intelligence path from repository to agent.</h2>
+          </div>
+          <div class="flow-shell" aria-label="RepoMind architecture flow">
+            <ol class="flow-list">
+              <li>Repository</li>
+              <li>Scanner / Parsers</li>
+              <li>Local SQLite Intelligence Index</li>
+              <li>Automatic Freshness</li>
+              <li>Intent + Explainable Retrieval</li>
+              <li>ContextPack</li>
+              <li>CLI / MCP</li>
+              <li>AI Coding Agent</li>
+            </ol>
+            <div class="flow-note">
+              <strong>Local-first:</strong> repository metadata, symbols, relationships, architecture facts,
+              and evidence-backed memory are indexed locally. Bounded snippets are read from the working
+              tree only when requested.
+            </div>
+          </div>
+          <p class="source-link">
+            Adapted from
+            <a href="https://github.com/raazlehra/Repomind/blob/main/docs/HOW_IT_WORKS.md">
+              docs/HOW_IT_WORKS.md
+            </a>.
+          </p>
+        </div>
+      </section>
+
+      <section class="section" id="cli-demo">
+        <div class="section-inner demo-grid">
+          <div>
+            <p class="eyebrow">CLI demo</p>
+            <h2>Designed to be shown from a real terminal.</h2>
+            <p>
+              The demo flow uses real commands and lets RepoMind output the repository-specific numbers.
+              This avoids invented statistics while showing initialization, freshness, retrieval,
+              explainability, stats, and memory.
+            </p>
+            <a
+              class="text-link"
+              href="https://github.com/raazlehra/Repomind/blob/main/docs/DEMO.md"
+            >
+              Read the 60-second demo guide
+            </a>
+          </div>
+          <div class="terminal-window terminal-large" aria-label="RepoMind command examples">
+            <div class="terminal-topbar" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </div>
+            <pre><code>repomind init
+repomind status
+repomind context "fix authentication bug"
+repomind context "fix authentication bug" --explain
+repomind stats
+repomind memory list</code></pre>
+          </div>
+        </div>
+        <div class="section-inner">
+          <div class="media-placeholder" aria-label="Future demo video placeholder">
+            <span>Future 60-second video / GIF demo</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-muted" id="privacy">
+        <div class="section-inner split">
+          <div>
+            <p class="eyebrow">Privacy model</p>
+            <h2>Local by default, with clear boundaries.</h2>
+          </div>
+          <ul class="check-list">
+            <li>RepoMind stores its intelligence index in local SQLite under the repository.</li>
+            <li>Normal indexing and retrieval do not upload source code.</li>
+            <li>RepoMind does not send telemetry.</li>
+            <li>No external AI API is required for normal operation.</li>
+            <li>The source tree remains authoritative; RepoMind output is discovery guidance.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section" id="beta">
+        <div class="section-inner beta-band">
+          <div>
+            <p class="eyebrow">RepoMind Beta</p>
+            <h2>FREE for developers willing to test on real repositories.</h2>
+            <p>
+              RepoMind is looking for practical feedback from developers who can compare retrieval,
+              freshness, memory, and command output against repositories they understand.
+            </p>
+          </div>
+          <a
+            class="button button-primary"
+            href="https://github.com/raazlehra/Repomind/blob/main/docs/BETA_TESTING.md"
+          >
+            Test RepoMind
+          </a>
+        </div>
+      </section>
+
+      <section class="section section-muted" id="pricing">
+        <div class="section-inner">
+          <div class="section-heading">
+            <p class="eyebrow">Services / pricing</p>
+            <h2>Optional help during the founding beta.</h2>
+            <p>
+              The Setup and Audit use the same RepoMind software. The higher service price reflects
+              additional human repository analysis, validation, and reporting. No RepoMind
+              functionality is artificially disabled between Setup and Audit.
+            </p>
+          </div>
+          <div class="pricing-grid">
+            <article class="price-card">
+              <h3>RepoMind Beta</h3>
+              <p class="price">FREE</p>
+              <p>For developers testing RepoMind themselves.</p>
+              <a
+                class="button button-secondary"
+                href="https://github.com/raazlehra/Repomind/blob/main/docs/BETA_TESTING.md"
+              >
+                Test RepoMind
+              </a>
+            </article>
+
+            <article class="price-card">
+              <h3>RepoMind Setup</h3>
+              <p class="price-label">Founding Beta</p>
+              <p class="price">₹1,999</p>
+              <ul>
+                <li>installation</li>
+                <li>repository initialization/configuration</li>
+                <li>health verification</li>
+                <li>Codex/MCP integration where applicable</li>
+                <li>automatic freshness verification</li>
+                <li>context/memory smoke test</li>
+                <li>usage guidance</li>
+              </ul>
+              <p class="fine-print">Setup handoff and usage guidance included.</p>
+              <a
+                class="button button-secondary"
+                href="https://github.com/raazlehra/Repomind/issues/new?title=RepoMind%20Setup%20Request"
+              >
+                Request Setup
+              </a>
+            </article>
+
+            <article class="price-card price-card-featured">
+              <p class="featured-label">Featured</p>
+              <h3>Repository Intelligence Audit</h3>
+              <p class="price-label">Founding Beta Price</p>
+              <p class="price">₹4,999</p>
+              <p class="standard-price">Planned standard price: ₹9,999</p>
+              <ul>
+                <li>Everything in RepoMind Setup</li>
+                <li>architecture and repository analysis</li>
+                <li>dependency/caller/impact analysis</li>
+                <li>high-impact and code-risk observations</li>
+                <li>AI-development readiness review</li>
+                <li>retrieval/ContextPack evaluation</li>
+                <li>written findings and prioritized recommendations</li>
+                <li>findings handoff included</li>
+              </ul>
+              <a
+                class="button button-primary"
+                href="https://github.com/raazlehra/Repomind/issues/new?title=Repository%20Intelligence%20Audit%20Request"
+              >
+                Request Audit
+              </a>
+            </article>
+          </div>
+          <p class="availability">
+            Founding beta availability is limited. Setup and audit requests are handled directly.
+          </p>
+        </div>
+      </section>
+
+      <section class="section" id="validation">
+        <div class="section-inner validation-grid">
+          <div>
+            <p class="eyebrow">Real-world validation</p>
+            <h2>Measure retrieval without sharing source code.</h2>
+            <p>
+              RepoMind's validation workflow records sanitized task-level evidence from repositories
+              testers control. Token measurements are estimates and are not provider tokenizer counts,
+              billing tokens, account credits, or guaranteed savings.
+            </p>
+            <a
+              class="text-link"
+              href="https://github.com/raazlehra/Repomind/blob/main/docs/REAL_WORLD_VALIDATION.md"
+            >
+              Read the validation workflow
+            </a>
+          </div>
+          <div class="metric-grid" aria-label="Example validation metric placeholders">
+            <span>indexed files</span>
+            <span>estimated repository tokens</span>
+            <span>approximate ContextPack tokens</span>
+            <span>expected-file recall</span>
+            <span>represented-context reduction</span>
+            <span>retrieval latency</span>
+          </div>
+        </div>
+        <div class="section-inner">
+          <div class="result-note">
+            <p>Sanitized real-world beta results will be added as external testing expands.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-muted" id="testers">
+        <div class="section-inner split">
+          <div>
+            <p class="eyebrow">Beta Testers Wanted</p>
+            <h2>Useful testing areas</h2>
+          </div>
+          <div class="tag-cloud" aria-label="Useful beta testing areas">
+            <span>Python / FastAPI</span>
+            <span>JavaScript / TypeScript / React</span>
+            <span>Kotlin / Android</span>
+            <span>larger repositories</span>
+            <span>Windows</span>
+            <span>macOS</span>
+            <span>Linux</span>
+          </div>
+          <a
+            class="button button-secondary"
+            href="https://github.com/raazlehra/Repomind/blob/main/docs/BETA_TESTING.md"
+          >
+            Beta Testing Guide
+          </a>
+        </div>
+      </section>
+
+      <section class="section" id="faq">
+        <div class="section-inner">
+          <div class="section-heading">
+            <p class="eyebrow">FAQ</p>
+            <h2>Short answers, careful claims.</h2>
+          </div>
+          <div class="faq-list">
+            <details>
+              <summary>What is RepoMind?</summary>
+              <p>
+                RepoMind is a local-first repository intelligence layer for AI coding agents. It
+                indexes repository metadata, symbols, relationships, architecture facts, and memory
+                into a local SQLite cache.
+              </p>
+            </details>
+            <details>
+              <summary>Does RepoMind upload my code?</summary>
+              <p>
+                Normal RepoMind operation does not upload repository source. Validation reports are
+                local until a tester chooses to share sanitized results.
+              </p>
+            </details>
+            <details>
+              <summary>Does RepoMind require an AI API?</summary>
+              <p>
+                No external AI API is required for normal indexing or retrieval.
+              </p>
+            </details>
+            <details>
+              <summary>Does RepoMind replace Codex/Copilot/Claude?</summary>
+              <p>
+                No. RepoMind is not a coding agent. It provides local repository context that agents
+                and developers can inspect before editing source.
+              </p>
+            </details>
+            <details>
+              <summary>What is Repository Memory?</summary>
+              <p>
+                Repository Memory stores durable local facts with source evidence, category,
+                confidence, timestamps, source type, and freshness status.
+              </p>
+            </details>
+            <details>
+              <summary>Why is the audit more expensive than setup?</summary>
+              <p>
+                Setup and Audit use the same RepoMind software. The audit adds human architecture
+                analysis, repository mapping, validation, written findings, prioritized recommendations,
+                and findings handoff. A short walkthrough can be arranged if needed.
+              </p>
+            </details>
+            <details>
+              <summary>Is RepoMind production-ready?</summary>
+              <p>
+                RepoMind is beta software. Developers should test it on repositories they own or
+                control and use normal care with pre-release developer tools.
+              </p>
+            </details>
+            <details>
+              <summary>Does RepoMind guarantee AI credit savings?</summary>
+              <p>
+                No. Token measurements are local estimates, not provider billing tokens, account
+                credits, or guaranteed savings.
+              </p>
+            </details>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="section-inner footer-grid">
+        <p>RepoMind. Local-first repository intelligence for AI coding agents.</p>
+        <nav aria-label="Footer navigation">
+          <a href="https://github.com/raazlehra/Repomind">GitHub</a>
+          <a href="https://github.com/raazlehra/Repomind#readme">Documentation</a>
+          <a href="https://github.com/raazlehra/Repomind/blob/main/docs/BETA_TESTING.md">
+            Beta Testing
+          </a>
+          <a href="https://github.com/raazlehra/Repomind/blob/main/SECURITY.md">Security</a>
+          <a href="https://github.com/raazlehra/Repomind/blob/main/LICENSE">License</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

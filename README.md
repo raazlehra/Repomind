@@ -96,9 +96,19 @@ All commands above exist in the current CLI. Most read commands accept `--format
 
 RepoMind separates static repository discovery from task-time retrieval:
 
-```text
-working tree -> scanner -> parser/indexer -> local SQLite index -> task-aware retrieval -> ContextPack
+```mermaid
+flowchart LR
+    Repo["developer repository"] --> Scan["scanner / parsers"]
+    Scan --> Index["local SQLite index"]
+    Repo -. saved changes .-> Fresh["automatic freshness"]
+    Fresh --> Index
+    Index --> Retrieve["explainable retrieval"]
+    Task["coding task"] --> Retrieve
+    Retrieve --> Pack["ContextPack"]
+    Pack --> API["CLI / MCP"]
 ```
+
+For a fuller public-facing architecture diagram, see [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md).
 
 The scanner honors `.gitignore`, `.repomindignore`, and optional `.repomind.toml` settings. It excludes generated directories, binaries, oversized files, environment files, keys, and obvious credential paths by default.
 

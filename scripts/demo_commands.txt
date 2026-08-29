@@ -1,0 +1,11 @@
+cd C:\Users\raazl\OneDrive\Documents\Repomind
+git status --short
+repomind init
+repomind status
+repomind context "add JSON output to repository intelligence stats"
+repomind context "add JSON output to repository intelligence stats" --explain
+repomind stats
+repomind memory list
+Set-Content -Path repomind\demo_freshness_probe.py -Value 'def demo_freshness_probe() -> str:', '    return "fresh"'
+repomind symbol demo_freshness_probe
+Remove-Item -Path repomind\demo_freshness_probe.py
