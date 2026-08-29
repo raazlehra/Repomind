@@ -1,39 +1,45 @@
 # RepoMind
 
-RepoMind is a local-first, portable repository intelligence layer for AI coding agents. It indexes repository structure once, updates changed files incrementally, and retrieves a compact, task-specific ContextPack instead of dumping a repository into an agent prompt.
+Local-first repository intelligence for AI coding agents.
 
-```text
-Repository -> RepoMind persistent index -> task context -> coding agent
-```
+Index once. Understand everywhere.
 
-The guiding idea is **index once. Understand everywhere.**
+RepoMind builds a persistent local index of a codebase, keeps it fresh as files change, and returns task-aware context that coding agents can use for focused discovery. It is not a coding agent, hosted service, embedding store, or replacement for reading source files. It helps agents find the right files, relationships, facts, and risks before they edit.
 
-RepoMind is not a coding agent and does not replace Codex, modern agent indexes, or source inspection. It complements agent-native context systems with persistent, local-first, structured, agent-neutral repository intelligence that can travel through CLI and MCP workflows. Its summaries guide file discovery; actual source is always authoritative. RepoMind does **not** promise or guarantee reductions in OpenAI/Codex account credits or usage limits. Its measurable goals are fewer unnecessary context tokens, scans, file reads, repeated architecture discovery steps, and irrelevant files supplied to agents.
+Key capabilities:
 
-## Features
+- Automatic freshness
+- Task-aware ContextPack
+- Explainable retrieval
+- Repository memory
+- Caller, dependency, and impact analysis
+- MCP support
+- No cloud upload required
 
-- Recursive scanner honoring `.gitignore` and `.repomindignore`
-- Default exclusion of generated trees, binaries, oversized files, environment files, keys, and obvious credentials
-- Versioned SQLite index in `.repomind/index.sqlite3`
-- Hash-based create/modify/delete/rename detection; unchanged files are not reparsed
-- Python AST extraction and deterministic JS/TS/JSX/TSX structural extraction
-- Conservative fallback extraction for Java, Go, Rust, C#, C, and C++
-- Imports, calls, inheritance, routes, test-targets, and confidence-scored dependency edges
-- Deterministic architecture detection from manifests and configuration
-- Task ranking using paths, symbols, lexical overlap, graph proximity, tests, purpose, and Git changes
-- Stable ContextPack output with deterministic task intent, ranked file groups, route/dependency context, optional explanations, and provider-neutral metrics
-- Durable Repository Memory for local, evidence-backed facts grounded in indexed files
-- Optional explainable ranking with score components for path, symbol, graph, dependency, route, test, intent, and freshness signals
-- Task-aware memory in ContextPack output, with memory relevance kept bounded below exact source/symbol/path evidence
-- Automatic retrieval-time freshness checks for saved working-tree changes
-- Explicit approximate-token budgets, budget truncation reporting, and progressive context levels
-- Repository/context reduction metrics using local character-based token estimates
-- Git-aware status without changing Git state
-- Event-driven optional watch mode with debouncing
-- Codex skill and idempotent `AGENTS.md` integration
-- No network, telemetry, cloud upload, external AI, or repository code execution
+RepoMind runs locally. It does not execute repository source, upload code, call external AI APIs, or send telemetry.
 
-## Requirements and installation
+## What RepoMind Is
+
+RepoMind is a portable repository intelligence layer for AI coding agents. It indexes files, symbols, imports, routes, dependency edges, architecture facts, Git working-tree state, and evidence-backed repository memory into a local SQLite index under `.repomind/`.
+
+Agents can query RepoMind through the CLI or MCP to get a compact ContextPack for a task, inspect dependency and caller relationships, retrieve bounded snippets, and reuse durable repository facts with provenance.
+
+RepoMind output is guidance for discovery. The working tree remains authoritative, and agents should inspect actual source before making edits.
+
+## Why RepoMind
+
+Large repositories make agents spend time rediscovering the same structure: where tests live, which files define routes, what symbols call each other, whether saved changes made the index stale, and which files are likely relevant to a task.
+
+RepoMind focuses on reusable, local, deterministic signals:
+
+- changed files are detected by hash;
+- unchanged files are not reparsed during normal refresh;
+- context is ranked for a specific task;
+- ranking can explain why files were selected;
+- repository memory is tied to evidence paths and staleness state;
+- token and context metrics are reported as local estimates, not billing claims.
+
+## Installation
 
 Python 3.11 or newer is required.
 
@@ -41,39 +47,34 @@ From a checkout:
 
 ```bash
 python -m pip install .
-# Development installation:
-python -m pip install -e '.[dev]'
+python -m pip install -e ".[dev]"
 ```
 
-The base package includes the local MCP server dependency. For efficient event-driven watch mode
-and optional Tree-sitter-backed JS/TS declarations:
+Optional extras:
 
 ```bash
-python -m pip install 'repomind[watch]'
-python -m pip install 'repomind[treesitter]'
+python -m pip install "repomind[watch]"
+python -m pip install "repomind[treesitter]"
 ```
 
-Without `watchdog`, `repomind watch` is unavailable. Retrieval-time freshness checks still work without watch mode. Without compatible Tree-sitter grammars, built-in deterministic parsers remain active.
+The base package includes the local MCP server dependency. Without `watchdog`, `repomind watch` is unavailable, but retrieval-time freshness checks still work. Without compatible Tree-sitter grammars, built-in deterministic JavaScript and TypeScript parsers remain active.
 
-## Quick start
+## Quick Start
 
 ```bash
 cd existing-repository
 repomind init
 repomind status
-repomind stats
-repomind memory list
-repomind memory add --category architecture "All payment state transitions must go through PaymentService."
-repomind map --depth 3 --symbols
 repomind context "fix authentication refresh token bug"
-repomind context "fix authentication refresh token bug" --explain
-repomind audit . --output reports/audit.md --json reports/audit.json
+repomind context "fix authentication refresh token bug" --explain --format markdown
+repomind memory list
+repomind map --depth 3 --symbols
 ```
 
-Example focused workflow:
+Useful follow-up queries:
 
 ```bash
-repomind context "add password reset functionality" --mode minimal --format markdown
+repomind stats
 repomind symbol AuthService.login --format json
 repomind callers AuthService.login
 repomind dependencies backend/auth.py
@@ -81,110 +82,51 @@ repomind impact AuthService.login
 repomind snippets AuthService.login
 ```
 
-RepoMind does not print whole files for normal context retrieval. `snippets` and context level 3 read bounded snippets explicitly.
-
-## Automatic freshness
-
-RepoMind read commands automatically check saved working-tree changes before reading the index:
-
-```text
-save source -> retrieval request -> freshness check -> incremental refresh if required -> current context
-```
-
-This applies to `context`, `map`, `symbol`, `callers`, `dependencies`, `impact`, `snippets`, and MCP/service equivalents. Saved changes can be reflected without a Git commit, manual `repomind refresh`, watch mode, or a RepoMind restart.
-
-Watch mode remains an optional proactive mechanism. It is useful when you want the index updated soon after filesystem events, but it is not required for retrieval correctness. RepoMind does not claim that every keystroke triggers indexing; the automatic check runs when a saved file is followed by a retrieval request.
-
-If automatic freshness reaches a current but partial state because one or more files have parser errors, normal successful reads continue for unaffected files and the structured freshness payload reports `status: "partial"` with an indexed parse-error count. CLI read commands print a warning in that case so stale valid symbols from the broken file are not silently presented as newly parsed current data.
-
-## CLI
-
-| Command | Purpose |
-|---|---|
-| `repomind init [path]` | Create and populate an index |
-| `repomind refresh` | Hash and reparse only created/modified files; remove deleted files |
-| `repomind watch` | Debounce filesystem changes and refresh proactively |
-| `repomind status` | Show indexed, changed, deleted, new, rename, and health counts |
-| `repomind stats` | Show repository intelligence metrics, estimated repository tokens, relationships, routes, and freshness reuse counts |
-| `repomind memory add/list/show/remove/validate/stale` | Manage local evidence-backed repository memory |
-| `repomind map` | Compact file map, optionally with symbols or JSON |
-| `repomind context "task"` | Retrieve budgeted task context |
-| `repomind audit [path]` | Generate a Markdown repository audit and optional JSON output |
-| `repomind symbol SYMBOL` | Show symbol signatures and locations |
-| `repomind callers SYMBOL` | Show resolvable incoming symbol edges |
-| `repomind dependencies TARGET` | Show outgoing dependencies |
-| `repomind impact TARGET` | Classify direct, indirect, test, route, and UI impact |
-| `repomind snippets SYMBOL` | Read bounded working-tree source around symbols |
-| `repomind doctor` | Check DB, schema, access, config, parsers, watcher, and Git |
-| `repomind install-codex` | Install/update RepoMind's Codex integration safely |
-
-Most read commands accept `--format text`, `--format markdown`, or `--format json`. Use `-C PATH`/`--repository PATH` from outside a repository.
-
-### Repository audit
-
-`repomind audit` creates or refreshes the local index, then emits a deterministic repository audit report. It does not execute repository source code or upload source anywhere.
-
-```bash
-repomind audit . --output reports/audit.md --json reports/audit.json
-repomind audit <repo> --output <file> --json <file>
-repomind audit . --task "fix authentication route" --output reports/auth-audit.md
-```
-
-The Markdown report is formatted for human review with an executive summary, detected architecture, release risks, test/readiness notes, suggested AI context pack, and recommended next actions. JSON output carries the same deterministic audit data for tracking or comparison.
-
-See [docs/sample-audit-report.md](docs/sample-audit-report.md) for a sanitized public sample report.
-
-Risk findings are static, local heuristics based on indexed files and bounded source reads. The initial paid-audit checks cover SQLite-specific SQLAlchemy month filters, weak production secret defaults, wildcard CORS, exposed provisioning or activation token flows, frontend bearer tokens in `localStorage`, parent provisioning email mismatch hotspots, and missing frontend E2E/component coverage for critical browser flows. Use `--no-refresh` to generate a report from the existing index without refreshing changed files.
-
-### Context budgets
-
-```bash
-repomind context "fix login bug" --budget 1000
-repomind context "fix login bug" --mode minimal   # about 750
-repomind context "fix login bug" --mode balanced  # about 2000
-repomind context "fix login bug" --mode deep      # about 5000
-```
-
-Token counts are local approximations, not billing-token counts. RepoMind ranks complete records and removes lower-value records first; it does not blindly slice the final text.
-
-Progressive disclosure:
-
-- **Level 1**: architecture, files, symbols, relationships, likely modification area
-- **Level 2**: signatures, imports, and nearby dependency details
-- **Level 3**: selected bounded source snippets
-
-Use `--level 1`, `--level 2`, or `--level 3`.
-
-Use `--explain` when you need inspectable ranking diagnostics:
-
-```bash
-repomind context "fix refresh token" --explain --format markdown
-repomind context "fix refresh token" --explain --format json
-```
-
-JSON output preserves the existing top-level context fields and adds structured `intent`, grouped files, `routes`, `metrics`, and, when requested, per-file `explanations` and `score_breakdown`. Metrics report indexed files, repository text bytes represented, candidate files considered, files returned, rendered context bytes, estimated context tokens, requested budget, truncation state, retrieval latency, and file/context-volume reduction percentages. Token figures use a provider-neutral character-based heuristic and are labelled as estimates.
-
-### Repository Memory
-
-Repository Memory stores durable high-level facts that help agents avoid repeatedly rediscovering repository basics. It is local, persistent, agent-neutral, evidence-backed, and freshness-aware. It is not LLM chat memory, a cloud profile, a source of truth without evidence, a secret store, or generated prose summarization.
-
-Automatic memory is intentionally conservative. RepoMind only persists deterministic facts from indexed evidence such as manifests, configuration, CI-style files, route/test layout, and strong source markers. Every automatic memory item stores source paths, optional source symbols, and an evidence hash derived from indexed file hashes. Automatic memory without evidence is rejected.
-
-Manual memory is explicit and marked with `status: manual`:
+Manual memory can be added when a human knows an important repository convention:
 
 ```bash
 repomind memory add --category architecture --source backend/services/payments.py "All payment state transitions go through PaymentService."
-repomind memory list --category architecture --format json
-repomind memory show <key-or-id>
 repomind memory validate
 repomind memory stale
 ```
 
-If automatic evidence changes during refresh, existing facts move to `needs_validation`; if the evidence disappears, they move to `stale`. Manual memory is not deleted or invalidated automatically, though source paths are still checked for secret-like names when the memory is created. ContextPack includes only relevant `valid` and `manual` memory by default and caps the number of records.
+All commands above exist in the current CLI. Most read commands accept `--format text`, `--format markdown`, or `--format json`. Use `-C PATH` or `--repository PATH` from outside a repository.
 
-## Configuration
+## How It Works
 
-Most repositories need no configuration. Optional `.repomind.toml`:
+RepoMind separates static repository discovery from task-time retrieval:
+
+```text
+working tree -> scanner -> parser/indexer -> local SQLite index -> task-aware retrieval -> ContextPack
+```
+
+The scanner honors `.gitignore`, `.repomindignore`, and optional `.repomind.toml` settings. It excludes generated directories, binaries, oversized files, environment files, keys, and obvious credential paths by default.
+
+The index stores metadata and relationships, not whole source files or whole ASTs. Level 3 context and `snippets` read bounded source directly from the working tree when requested.
+
+Common CLI commands:
+
+| Command | Purpose |
+|---|---|
+| `repomind init [path]` | Create and populate an index |
+| `repomind refresh` | Hash and reparse created or modified files; remove deleted files |
+| `repomind status` | Show index, working-tree, freshness, and memory counts |
+| `repomind stats` | Show repository intelligence metrics |
+| `repomind context "task"` | Retrieve task-specific context |
+| `repomind memory add/list/show/remove/validate/stale` | Manage local repository memory |
+| `repomind map` | Print a compact repository map |
+| `repomind symbol SYMBOL` | Show symbol signatures and locations |
+| `repomind callers SYMBOL` | Show statically detected callers |
+| `repomind dependencies TARGET` | Show outgoing file or symbol dependencies |
+| `repomind impact TARGET` | Estimate direct, indirect, test, route, and UI impact |
+| `repomind snippets SYMBOL` | Read bounded working-tree snippets |
+| `repomind audit [path]` | Generate a deterministic repository audit |
+| `repomind watch` | Debounce filesystem changes and refresh proactively |
+| `repomind doctor` | Run actionable diagnostics |
+| `repomind install-codex [path]` | Install the Codex skill and `AGENTS.md` guidance |
+| `repomind mcp` | Run the local MCP server |
+
+Optional `.repomind.toml`:
 
 ```toml
 [repomind]
@@ -198,23 +140,118 @@ generated_directories = [".git", ".repomind", "node_modules", "dist", "build", "
 secret_patterns = [".env", ".env.*", "*.pem", "*.key", "credentials*", "secrets*"]
 ```
 
-`generated_directories` and `secret_patterns` replace their default lists when configured; retain entries you still want excluded. `.git` and `.repomind` remain hard exclusions. Included files do not bypass secret, size, binary, or hard safety exclusions.
+`generated_directories` and `secret_patterns` replace their defaults when configured, so keep entries you still want excluded. `.git` and `.repomind` remain hard exclusions.
 
-## Supported languages
+## Automatic Freshness
 
-First-class:
+RepoMind read commands check saved working-tree changes before reading the index:
 
-- Python: AST-backed classes, functions, methods, decorators, signatures, constants, imports, calls, inheritance, and common decorator routes
+```text
+save source -> retrieval request -> freshness check -> incremental refresh if needed -> current context
+```
+
+This applies to `context`, `map`, `symbol`, `callers`, `dependencies`, `impact`, `snippets`, and MCP/service equivalents. Saved changes can be reflected without a Git commit, manual refresh, watch mode, or RepoMind restart.
+
+Watch mode is optional and proactive. It is useful when you want the index updated soon after filesystem events, but retrieval correctness does not depend on it.
+
+If a changed file has a parser error, unaffected files remain usable. The structured freshness payload reports `partial`, and CLI read commands warn rather than presenting stale symbols from the broken file as current.
+
+## ContextPack
+
+`repomind context` returns a task-aware ContextPack. It includes deterministic intent labels, architecture facts, relevant repository memory, ranked files, primary and related file groups, tests, symbols, relationships, routes, likely modification areas, budget state, freshness state, and provider-neutral metrics.
+
+```bash
+repomind context "fix login bug" --budget 1000
+repomind context "fix login bug" --mode minimal
+repomind context "fix login bug" --mode balanced
+repomind context "fix login bug" --mode deep
+repomind context "fix login bug" --level 2 --format json
+```
+
+Context modes are approximate presets:
+
+- `minimal`: about 750 estimated tokens
+- `balanced`: about 2000 estimated tokens
+- `deep`: about 5000 estimated tokens
+
+Context levels:
+
+- Level 1: architecture, memory, ranked files, symbols, relationships, likely modification area
+- Level 2: Level 1 plus signatures, imports, and nearby dependency details
+- Level 3: Level 2 plus selected bounded source snippets
+
+Token counts are local character-based estimates. They are not provider tokenizer counts or billing-token values.
+
+## Repository Memory
+
+Repository Memory stores durable local facts about a repository. It is evidence-backed, freshness-aware, and agent-neutral. It is not generic chat memory, embeddings, generated architecture prose, a secret store, or a hosted profile.
+
+Automatic memory is conservative. RepoMind persists facts only when they come from deterministic indexed evidence such as manifests, configuration, route/test layout, architecture facts with file evidence, and strong source markers. Automatic records store source paths, optional source symbols, an evidence hash, category, confidence, timestamps, source type, and status.
+
+Manual memory is explicit and marked `manual`:
+
+```bash
+repomind memory add --category architecture --source backend/services/payments.py "All payment state transitions go through PaymentService."
+repomind memory list --category architecture --format json
+repomind memory show <key-or-id>
+repomind memory remove <key-or-id>
+repomind memory validate
+repomind memory stale
+```
+
+Automatic memory can move through freshness states:
+
+```text
+same evidence hash -> valid
+changed evidence hash -> needs_validation
+missing deterministic fact or evidence -> stale
+manual memory -> manual
+```
+
+Normal task retrieval includes only relevant `valid` and `manual` memory by default. Stale and uncertain automatic memory is not surfaced as valid context.
+
+## Explainable Retrieval
+
+Use `--explain` when you need ranking diagnostics:
+
+```bash
+repomind context "fix refresh token" --explain --format markdown
+repomind context "fix refresh token" --explain --format json
+```
+
+Explanations can include path, symbol, lexical, graph, route, dependency, test, task-intent, Git freshness, and bounded memory signals. Memory influence is intentionally capped below exact source, path, symbol, route, and graph evidence.
+
+Budget fitting removes lower-priority records first instead of blindly truncating rendered text.
+
+## Dependency / Impact Analysis
+
+RepoMind stores conservative static relationships for imports, calls, inheritance, routes, and test targets. Relationship confidence is stored with evidence so unresolved or uncertain references do not become invented edges.
+
+```bash
+repomind callers AuthService.login
+repomind dependencies backend/auth.py
+repomind impact AuthService.login
+repomind snippets AuthService.login
+```
+
+Static analysis is intentionally conservative. Dynamic dispatch, reflection, runtime-generated imports, dependency injection, and framework magic may require normal source inspection.
+
+## Supported Languages
+
+First-class extraction:
+
+- Python: AST-backed classes, functions, methods, decorators, signatures, constants, imports, calls, inheritance, and common decorator routes.
 - JavaScript, TypeScript, JSX, TSX: imports, exported declarations, functions, classes, interfaces, types, enums, arrow functions/components, inheritance/implementation, lexical calls, and common router calls. With the `treesitter` extra, Tree-sitter supplies declaration spans while deterministic extraction retains relationship evidence.
 
-Conservative fallback:
+Conservative fallback extraction:
 
-- Java, Go, Rust, C#, C, C++
-- Additional basic file recognition for Ruby, PHP, Swift, Kotlin, Scala, shell, and SQL
+- Java, Go, Rust, C#, C, and C++
 
-The parser registry is deliberately replaceable so Tree-sitter adapters can be added without changing the indexer. V1 does not store whole ASTs.
+Additional basic file recognition:
 
-## Codex integration
+- Ruby, PHP, Swift, Kotlin, Scala, shell, SQL, common manifests, configuration files, and documentation files.
+
+## Codex Integration
 
 This repository includes `.codex/skills/repomind/SKILL.md`. Install integration into another project with:
 
@@ -223,35 +260,41 @@ cd project
 repomind install-codex
 ```
 
-This creates the project-local skill and creates or appends a delimited RepoMind section to `AGENTS.md`. Existing content is preserved. Repeated runs are idempotent.
+This creates the project-local skill and creates or appends a delimited RepoMind section to `AGENTS.md`. Existing content is preserved, and repeated runs are idempotent.
 
-The skill instructs Codex to query RepoMind before broad scanning, use the result for file discovery, inspect actual source before edits, and request deeper detail only when needed. Read commands automatically refresh stale saved changes; `repomind refresh` remains available for explicit maintenance.
+The skill instructs Codex to query RepoMind before broad scanning, use results for file discovery, inspect source before edits, and request deeper detail only when needed.
 
-## MCP integration
+## MCP Integration
 
 RepoMind can run as a local MCP server for coding agents:
 
 ```bash
-pip install -e .
+python -m pip install -e .
 repomind mcp
 ```
 
-The MCP server uses standard stdio transport and exposes status, context, stats, symbol, callers, dependencies, impact, snippets, refresh, and map tools. Start with `repomind_status`, then request `repomind_context` at level 1 for the task. Context accepts an optional `explain` flag. Context, symbol, dependency, impact, snippet, and map tools refresh stale saved changes before reading the index. RepoMind is a discovery accelerator; agents should still inspect actual source files before edits. See [docs/MCP.md](docs/MCP.md).
-`repomind_memory` exposes bounded list/search and task-relevant memory retrieval for MCP clients.
+The MCP server uses stdio transport and exposes status, context, stats, memory, symbol, callers, dependencies, impact, snippets, refresh, and map tools.
 
-## Privacy and security model
+Typical MCP flow:
 
-Default operation is entirely local:
+1. Call `repomind_status`.
+2. Call `repomind_context` with `level=1` for the task.
+3. Inspect actual source before editing.
+4. Use `repomind_memory`, `repomind_symbol`, `repomind_dependencies`, `repomind_callers`, `repomind_impact`, or `repomind_snippets` when deeper detail is useful.
 
-- no network requests
-- no cloud uploads
-- no telemetry
-- no external AI APIs
-- no source code leaving the machine
+See [docs/MCP.md](docs/MCP.md).
 
-Indexing is static. RepoMind does not import, evaluate, build, or execute repository source. See [SECURITY.md](SECURITY.md).
+## Stats / Metrics
 
-Repository Memory follows the same privacy model. Automatic extraction uses indexed non-secret files only, evidence hashes are built from stored file hashes, and memory records store paths/symbols rather than large evidence payloads or secret values.
+`repomind stats` reports local repository intelligence metrics:
+
+```bash
+repomind stats --format json
+```
+
+Metrics include indexed files, symbols, routes, relationships, memory counts, represented text bytes, estimated repository tokens, token-estimation method, last refresh, and freshness reuse counts.
+
+Context metrics include candidate files considered, files returned, rendered context bytes, estimated context tokens, requested budget, truncation state, retrieval latency, and file/context-volume reduction percentages. These are local estimates for observability and comparison, not provider billing claims.
 
 ## Benchmarks
 
@@ -262,29 +305,62 @@ python -m benchmarks.run_benchmark --format markdown
 python -m benchmarks.run_benchmark --format json --output benchmark.json
 ```
 
-The harness measures files selected, represented source bytes, emitted output bytes, approximate tokens, retrieval latency, index size, initial index duration, one-file incremental duration, and expected-file recall. See [BENCHMARKS.md](BENCHMARKS.md). Results are measurements on tiny synthetic fixtures, not universal savings claims.
+The benchmark harness measures indexing duration, incremental reuse, memory validation timing, selected files, output bytes, approximate tokens, retrieval latency, index size, and expected-file recall on small synthetic fixtures. See [BENCHMARKS.md](BENCHMARKS.md).
+
+Current beta.8 validation reported 12/12 expected benchmark files retrieved with mean expected-file recall of 1.000. Benchmark results are fixture measurements, not universal performance or savings claims.
+
+## Privacy / Security
+
+RepoMind is local-first by default:
+
+- no repository source execution;
+- no network requests for normal indexing or retrieval;
+- no cloud uploads;
+- no telemetry;
+- no external AI APIs.
+
+The SQLite index may contain repository paths, symbol names, signatures, short docstrings, dependency evidence, architecture facts, Git state, and repository memory metadata. Treat `.repomind/` as local repository metadata and do not normally commit it.
+
+Repository Memory follows the same privacy model. Automatic memory rejects facts without evidence and stores paths, optional symbols, and hashes rather than large source payloads or secret values. Manual memory source paths are checked for secret-like names.
+
+See [SECURITY.md](SECURITY.md).
 
 ## Limitations
 
-- Static call resolution is conservative; dynamic dispatch, reflection, runtime-generated imports, aliases, framework magic, and dependency injection can remain unresolved.
-- JS/TS extraction is deterministic lexical analysis rather than a complete compiler frontend; complex multiline syntax can be missed.
+- RepoMind is not a coding agent and does not edit code.
+- Static analysis can miss dynamic language behavior, reflection, runtime-generated imports, dependency injection, and framework magic.
+- JavaScript and TypeScript extraction is deterministic structural extraction, not a full compiler frontend.
 - Fallback-language extraction is intentionally shallow.
-- Import resolution covers common relative, package, and source-root layouts but not every monorepo alias configuration.
-- Rename detection requires an unambiguous delete/create content-hash match.
-- Watch mode requires the optional `watchdog` extra; RepoMind does not fall back to continuous whole-tree polling.
-- Architecture detection reports only manifest/config evidence and can be incomplete.
+- Architecture detection reports manifest/config evidence and can be incomplete.
 - Repository Memory is conservative and may omit useful facts unless they can be tied to strong indexed evidence or added manually.
-- Automatic memory facts can require validation after evidence changes; RepoMind marks uncertainty instead of guessing replacements.
+- Automatic memory can require validation after evidence changes.
 - Approximate token counts are not provider tokenizer or billing values.
-- SQLite indexes are local caches and should not normally be committed.
+- RepoMind does not guarantee AI credit savings, token savings, or performance outcomes across arbitrary repositories.
+- `.repomind/` indexes are local caches and should not normally be committed.
 
-## Development
+## Roadmap
 
-See [ARCHITECTURE.md](ARCHITECTURE.md), [CONTRIBUTING.md](CONTRIBUTING.md), and [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+Planned work is tracked in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Near-term areas include broader parser coverage, richer deterministic architecture detection, additional MCP ergonomics, more benchmark fixtures, and continued hardening of repository memory validation.
+
+The roadmap does not require embeddings, external LLM calls, cloud APIs, vector databases, hosted services, UI, accounts, or telemetry.
+
+## Contributing / Beta Testing
+
+RepoMind is in beta. Useful feedback includes:
+
+- repositories where retrieval selects confusing files;
+- missing static relationships or language constructs;
+- memory facts that should be detected but are not;
+- stale documentation or unclear CLI behavior;
+- benchmark cases that represent real maintenance tasks.
+
+For development:
 
 ```bash
 python -m pytest
-ruff check .
-mypy repomind
+python -m ruff check .
+python -m mypy repomind
 python -m build
 ```
+
+See [ARCHITECTURE.md](ARCHITECTURE.md), [CONTRIBUTING.md](CONTRIBUTING.md), and [SECURITY.md](SECURITY.md).

@@ -1,0 +1,90 @@
+name: Bug report
+description: Report a reproducible RepoMind problem.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing RepoMind. Do not paste proprietary source code, API keys, credentials, private keys, tokens, or secrets.
+  - type: input
+    id: repomind_version
+    attributes:
+      label: RepoMind version
+      placeholder: "2.0.0b8"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: python_version
+    attributes:
+      label: Python version
+      placeholder: "Python 3.11.9"
+    validations:
+      required: true
+  - type: input
+    id: project_stack
+    attributes:
+      label: Project stack/language
+      placeholder: "Python/FastAPI, TypeScript/React, Android/Kotlin, etc."
+    validations:
+      required: true
+  - type: input
+    id: repo_size
+    attributes:
+      label: Approximate repo size
+      placeholder: "About 500 files, 80k lines, or similar"
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: Paste the exact command, with private paths redacted if needed.
+      render: shell
+      placeholder: "repomind context \"fix login redirect\" --explain"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      placeholder: "What did you expect RepoMind to do?"
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      placeholder: "What happened instead?"
+    validations:
+      required: true
+  - type: textarea
+    id: logs_errors
+    attributes:
+      label: Logs/errors
+      description: Redact secrets and proprietary paths. Do not paste private source.
+      render: text
+  - type: textarea
+    id: reproducibility
+    attributes:
+      label: Reproducibility
+      placeholder: "Always, sometimes, once, or unknown. Include minimal safe steps if possible."
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy_confirmation
+    attributes:
+      label: Privacy confirmation
+      options:
+        - label: I have removed proprietary source code, secrets, credentials, private keys, tokens, and sensitive paths from this report.
+          required: true
