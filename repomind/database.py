@@ -9,13 +9,35 @@ from pathlib import Path
 from typing import Any, cast
 
 from repomind.errors import NotIndexedError, RepoMindError
-from repomind.models import ArchitectureFact, ParseResult, ScannedFile
+from repomind.models import ArchitectureFact, MemoryRecord, ParseResult, ScannedFile
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 INDEX_DIRECTORY = ".repomind"
 INDEX_FILENAME = "index.sqlite3"
 
-_SCHEMA = """
+_MEMORY_SCHEMA = """
+CREATE TABLE IF NOT EXISTS memory (
+    id INTEGER PRIMARY KEY,
+    key TEXT NOT NULL UNIQUE,
+    value TEXT NOT NULL,
+    category TEXT NOT NULL,
+    confidence REAL NOT NULL,
+    source_type TEXT NOT NULL,
+    source_paths TEXT NOT NULL,
+    source_symbols TEXT NOT NULL DEFAULT '[]',
+    evidence_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    last_verified_at TEXT NOT NULL,
+    status TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_memory_category ON memory(category);
+CREATE INDEX IF NOT EXISTS idx_memory_status ON memory(status);
+CREATE INDEX IF NOT EXISTS idx_memory_source_type ON memory(source_type);
+"""
+
+_SCHEMA = (
+    """
 CREATE TABLE IF NOT EXISTS meta (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -118,6 +140,8 @@ CREATE TABLE IF NOT EXISTS git_state (
     value TEXT NOT NULL
 );
 """
+    + _MEMORY_SCHEMA
+)
 
 
 def utc_now() -> str:
@@ -171,11 +195,23 @@ class IndexDatabase:
             ) from exc
         if version is None:
             raise RepoMindError("Index schema version is missing. Run: repomind init --force")
-        if int(version) != SCHEMA_VERSION:
+        parsed_version = int(version)
+        if parsed_version < SCHEMA_VERSION:
+            self._migrate(parsed_version)
+            return
+        if parsed_version != SCHEMA_VERSION:
             raise RepoMindError(
                 f"Unsupported index schema {version}; this RepoMind expects {SCHEMA_VERSION}. "
                 "Run: repomind init --force"
             )
+
+    def _migrate(self, version: int) -> None:
+        if version < 1:
+            raise RepoMindError("Index schema version is too old. Run: repomind init --force")
+        with self.transaction():
+            if version == 1:
+                self.connection.executescript(_MEMORY_SCHEMA)
+                self.set_meta("schema_version", str(SCHEMA_VERSION))
 
     @contextmanager
     def transaction(self) -> Iterator[None]:
@@ -385,6 +421,67 @@ class IndexDatabase:
             ((fact.category, fact.name, fact.evidence, fact.confidence) for fact in facts),
         )
 
+    def upsert_memory(self, record: MemoryRecord) -> int:
+        now = utc_now()
+        created_at = record.created_at or now
+        updated_at = record.updated_at or now
+        verified_at = record.last_verified_at or now
+        self.connection.execute(
+            """
+            INSERT INTO memory(key, value, category, confidence, source_type, source_paths,
+                               source_symbols, evidence_hash, created_at, updated_at,
+                               last_verified_at, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(key) DO UPDATE SET
+                value=excluded.value,
+                category=excluded.category,
+                confidence=excluded.confidence,
+                source_type=excluded.source_type,
+                source_paths=excluded.source_paths,
+                source_symbols=excluded.source_symbols,
+                evidence_hash=excluded.evidence_hash,
+                updated_at=excluded.updated_at,
+                last_verified_at=excluded.last_verified_at,
+                status=excluded.status
+            """,
+            (
+                record.key,
+                record.value,
+                record.category,
+                record.confidence,
+                record.source_type,
+                json.dumps(list(record.source_paths), sort_keys=True),
+                json.dumps(list(record.source_symbols), sort_keys=True),
+                record.evidence_hash,
+                created_at,
+                updated_at,
+                verified_at,
+                record.status,
+            ),
+        )
+        row = self.connection.execute(
+            "SELECT id FROM memory WHERE key = ?", (record.key,)
+        ).fetchone()
+        assert row is not None
+        return int(row["id"])
+
+    def memory_by_id_or_key(self, identifier: str) -> sqlite3.Row | None:
+        if identifier.isdigit():
+            row = self.connection.execute(
+                "SELECT * FROM memory WHERE id = ?", (int(identifier),)
+            ).fetchone()
+            if row is not None:
+                return cast(sqlite3.Row, row)
+        row = self.connection.execute("SELECT * FROM memory WHERE key = ?", (identifier,)).fetchone()
+        return cast(sqlite3.Row | None, row)
+
+    def delete_memory(self, identifier: str) -> bool:
+        row = self.memory_by_id_or_key(identifier)
+        if row is None:
+            return False
+        self.connection.execute("DELETE FROM memory WHERE id = ?", (int(row["id"]),))
+        return True
+
     def set_git_state(self, values: dict[str, Any]) -> None:
         self.connection.execute("DELETE FROM git_state")
         self.connection.executemany(
@@ -397,7 +494,7 @@ class IndexDatabase:
         return str(row[0]) if row else "unknown"
 
     def counts(self) -> dict[str, int]:
-        tables = ("files", "symbols", "imports", "references", "dependencies", "routes")
+        tables = ("files", "symbols", "imports", "references", "dependencies", "routes", "memory")
         output: dict[str, int] = {}
         for table in tables:
             escaped = '"references"' if table == "references" else table

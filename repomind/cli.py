@@ -18,10 +18,31 @@ from repomind.freshness import FreshnessResult, ensure_index_fresh
 from repomind.indexer import Indexer, IndexResult, ProgressCallback
 from repomind.integration import install_codex
 from repomind.map import build_repository_map, render_repository_map
+from repomind.memory import memory_counts
 from repomind.queries import callers, dependencies, impact, snippets, symbol_details
 from repomind.repository import resolve_repository
 from repomind.retrieval import ContextRetriever, fit_context_to_budget
-from repomind.services import stats as service_stats
+from repomind.services import (
+    memory_add as service_memory_add,
+)
+from repomind.services import (
+    memory_list as service_memory_list,
+)
+from repomind.services import (
+    memory_remove as service_memory_remove,
+)
+from repomind.services import (
+    memory_show as service_memory_show,
+)
+from repomind.services import (
+    memory_stale as service_memory_stale,
+)
+from repomind.services import (
+    memory_validate as service_memory_validate,
+)
+from repomind.services import (
+    stats as service_stats,
+)
 from repomind.watcher import watch_repository, watchdog_available
 
 _FORMATS = ("text", "markdown", "json")
@@ -56,6 +77,46 @@ def build_parser() -> argparse.ArgumentParser:
     stats_parser = subparsers.add_parser("stats", help="show repository intelligence metrics")
     _repository_argument(stats_parser)
     stats_parser.add_argument("--format", choices=_FORMATS, default="text")
+
+    memory_parser = subparsers.add_parser("memory", help="manage local repository memory")
+    memory_subparsers = memory_parser.add_subparsers(dest="memory_command", required=True)
+    memory_add = memory_subparsers.add_parser("add", help="add explicit manual memory")
+    _repository_argument(memory_add)
+    memory_add.add_argument("--category", required=True)
+    memory_add.add_argument("--key")
+    memory_add.add_argument("--source", dest="sources", action="append", default=[])
+    memory_add.add_argument("--symbol", dest="symbols", action="append", default=[])
+    memory_add.add_argument("--format", choices=_FORMATS, default="text")
+    memory_add.add_argument("value")
+
+    memory_list = memory_subparsers.add_parser("list", help="list bounded repository memory")
+    _repository_argument(memory_list)
+    memory_list.add_argument("--category")
+    memory_list.add_argument("--status", dest="status_filter")
+    memory_list.add_argument("--limit", type=int, default=50)
+    memory_list.add_argument("--format", choices=_FORMATS, default="text")
+
+    memory_show = memory_subparsers.add_parser("show", help="show one memory item")
+    _repository_argument(memory_show)
+    memory_show.add_argument("--format", choices=_FORMATS, default="text")
+    memory_show.add_argument("identifier")
+
+    memory_remove = memory_subparsers.add_parser("remove", help="remove one memory item")
+    _repository_argument(memory_remove)
+    memory_remove.add_argument("--format", choices=_FORMATS, default="text")
+    memory_remove.add_argument("identifier")
+
+    memory_validate = memory_subparsers.add_parser(
+        "validate", help="validate automatic memory evidence"
+    )
+    _repository_argument(memory_validate)
+    memory_validate.add_argument("identifier", nargs="?")
+    memory_validate.add_argument("--format", choices=_FORMATS, default="text")
+
+    memory_stale = memory_subparsers.add_parser("stale", help="list memory needing review")
+    _repository_argument(memory_stale)
+    memory_stale.add_argument("--limit", type=int, default=50)
+    memory_stale.add_argument("--format", choices=_FORMATS, default="text")
 
     watch_parser = subparsers.add_parser("watch", help="watch files and incrementally refresh")
     _repository_argument(watch_parser)
@@ -175,12 +236,43 @@ def _dispatch(args: argparse.Namespace) -> int:
                 "index_healthy": integrity == "ok",
                 "symbols": counts["symbols"],
                 "dependencies": counts["dependencies"],
+                "memory": memory_counts(database),
                 "last_refresh": database.get_meta("last_refresh_at"),
             }
         print(render_records(data, str(args.format)), end="")
         return 0
     if command == "stats":
         print(render_records(service_stats(str(args.repository)), str(args.format)), end="")
+        return 0
+    if command == "memory":
+        memory_command = str(args.memory_command)
+        if memory_command == "add":
+            data = service_memory_add(
+                str(args.repository),
+                str(args.value),
+                str(args.category),
+                args.key,
+                list(args.sources),
+                list(args.symbols),
+            )
+        elif memory_command == "list":
+            data = service_memory_list(
+                str(args.repository),
+                args.category,
+                args.status_filter,
+                int(args.limit),
+            )
+        elif memory_command == "show":
+            data = service_memory_show(str(args.repository), str(args.identifier))
+        elif memory_command == "remove":
+            data = service_memory_remove(str(args.repository), str(args.identifier))
+        elif memory_command == "validate":
+            data = service_memory_validate(str(args.repository), args.identifier)
+        elif memory_command == "stale":
+            data = service_memory_stale(str(args.repository), int(args.limit))
+        else:
+            raise RepoMindError(f"Unknown memory command: {memory_command}")
+        print(render_records(data, str(args.format)), end="")
         return 0
     if command == "watch":
         root = resolve_repository(Path(args.repository))

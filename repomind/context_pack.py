@@ -89,6 +89,7 @@ class ContextPack:
     context_level: int
     intent: list[str]
     architecture: list[dict[str, Any]]
+    memory: list[dict[str, Any]]
     relevant_files: list[dict[str, Any]]
     important_symbols: list[dict[str, Any]]
     relationships: list[dict[str, Any]]
@@ -119,6 +120,7 @@ class ContextPack:
             "context_level": self.context_level,
             "intent": {"labels": self.intent},
             "architecture": self.architecture,
+            "memory": self.memory,
             "relevant_files": files,
             "primary_files": self.primary_files,
             "related_files": self.related_files,

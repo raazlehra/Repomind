@@ -16,8 +16,9 @@ The harness copies synthetic repositories from `tests/fixtures` into temporary d
 1. creates a fresh index;
 2. changes one indexed source file;
 3. runs incremental refresh and records how many files were parsed, reused, added, or deleted;
-4. retrieves Level 1 Markdown context with a 2,000 approximate-token budget;
-5. compares selected files with hand-authored expected relevant files in `benchmarks/tasks.json`.
+4. validates deterministic repository memory and records memory counts/timing;
+5. retrieves Level 1 Markdown context with a 2,000 approximate-token budget;
+6. compares selected files with hand-authored expected relevant files in `benchmarks/tasks.json`.
 
 Metrics:
 
@@ -30,6 +31,8 @@ Metrics:
 - **Retrieval latency**: ranking, package building, budget fitting, and rendering, excluding initial indexing.
 - **Index size**: SQLite database plus active WAL/SHM files at measurement time.
 - **Initial/incremental indexing duration**: wall-clock duration measured by `perf_counter`.
+- **Memory facts / validation duration**: deterministic repository memory facts stored locally and the time spent checking whether automatic evidence still proves them.
+- **Memory records**: evidence-backed memory records included in the task ContextPack after relevance filtering and caps.
 - **Expected-file recall**: expected relevant files present anywhere in the returned relevant-file list divided by expected files. Expected sets are fixture-specific judgments, not ground truth for arbitrary projects.
 
 Timing results on tiny fixtures are sensitive to machine load, filesystem caching, Python version, and fixture scale. The harness reports raw measurements so runs can be compared; it does not transform them into marketing claims.

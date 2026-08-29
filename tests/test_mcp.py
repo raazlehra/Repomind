@@ -42,6 +42,7 @@ async def test_mcp_server_startup_and_status(python_repo: Path) -> None:
         "repomind_refresh",
         "repomind_map",
         "repomind_stats",
+        "repomind_memory",
     }.issubset(tool_names)
     assert status.structured_content["initialized"] is True
     assert status.structured_content["index_health"] == "ok"

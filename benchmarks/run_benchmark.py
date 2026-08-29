@@ -14,6 +14,7 @@ from typing import Any
 from repomind.database import IndexDatabase
 from repomind.formatters import render_context
 from repomind.indexer import Indexer
+from repomind.memory import add_manual_memory, memory_counts, validate_memory
 from repomind.retrieval import ContextRetriever, fit_context_to_budget
 from repomind.utils import approximate_tokens
 
@@ -48,11 +49,22 @@ def run_benchmarks(budget: int = 2000) -> dict[str, Any]:
                 encoding="utf-8",
             )
             incremental = Indexer(destination).refresh()
+            with IndexDatabase(destination) as database:
+                seed_memory(database)
+                validation_started = time.perf_counter()
+                validation = validate_memory(database)
+                memory_validation_seconds = time.perf_counter() - validation_started
+                memory = memory_counts(database)
             repository_metrics[name] = {
                 "indexed_files": initial.indexed_files,
                 "index_bytes": incremental.index_bytes,
                 "initial_index_seconds": initial.duration_seconds,
                 "incremental_index_seconds": incremental.duration_seconds,
+                "memory_validation_seconds": memory_validation_seconds,
+                "memory_facts": memory["total"],
+                "memory_valid": memory["valid"],
+                "memory_manual": memory["manual"],
+                "memory_validation_outcomes": validation["outcomes"],
                 "incremental_files_parsed": incremental.parsed_files,
                 "incremental_files_reused": max(0, incremental.indexed_files - incremental.parsed_files),
                 "incremental_new_files": len(incremental.changes.created),
@@ -87,6 +99,7 @@ def run_benchmarks(budget: int = 2000) -> dict[str, Any]:
                 if (repository / path).is_file()
             )
             snippets = fitted.get("snippets", [])
+            memory = fitted.get("memory", [])
             source_context_bytes = (
                 sum(
                     len(str(item.get("code", "")).encode("utf-8"))
@@ -112,6 +125,7 @@ def run_benchmarks(budget: int = 2000) -> dict[str, Any]:
                     "estimated_context_tokens": task_context.get(
                         "estimated_context_tokens", approximate_tokens(output)
                     ),
+                    "memory_records": len(memory) if isinstance(memory, list) else 0,
                     "file_reduction_percent": reduction.get("file_reduction_percent", 0.0),
                     "context_volume_reduction_percent": reduction.get(
                         "context_volume_reduction_percent", 0.0
@@ -172,15 +186,30 @@ def render_markdown(results: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
+            "## Repository memory",
+            "",
+            "| Fixture | Facts | Valid | Manual | Validation (s) | Outcomes |",
+            "|---|---:|---:|---:|---:|---|",
+        ]
+    )
+    for name, item in results["repositories"].items():
+        lines.append(
+            f"| {name} | {item['memory_facts']} | {item['memory_valid']} | "
+            f"{item['memory_manual']} | {item['memory_validation_seconds']:.6f} | "
+            f"{item['memory_validation_outcomes']} |"
+        )
+    lines.extend(
+        [
+            "",
             "## Task retrieval",
             "",
-            "| Task | Files | Candidates | Source context bytes | Selected files total bytes | Output bytes | Est. tokens | File reduction | Context reduction | Latency (s) | Expected recall |",
-            "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Task | Files | Candidates | Memory | Source context bytes | Selected files total bytes | Output bytes | Est. tokens | File reduction | Context reduction | Latency (s) | Expected recall |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     for item in results["tasks"]:
         lines.append(
-            f"| {item['task']} | {item['files_inspected']} | {item['candidate_files_considered']} | {item['source_context_bytes_retrieved']} | "
+            f"| {item['task']} | {item['files_inspected']} | {item['candidate_files_considered']} | {item['memory_records']} | {item['source_context_bytes_retrieved']} | "
             f"{item['selected_files_total_bytes']} | {item['context_output_bytes']} | "
             f"{item['estimated_context_tokens']} | {item['file_reduction_percent']:.2f}% | "
             f"{item['context_volume_reduction_percent']:.2f}% | {item['retrieval_latency_seconds']:.6f} | "
@@ -201,6 +230,25 @@ def render_markdown(results: dict[str, Any]) -> str:
         ]
     )
     return "\n".join(lines)
+
+
+def seed_memory(database: IndexDatabase) -> None:
+    candidates = (
+        (
+            "security",
+            "Authentication refresh-token behavior is implemented in backend services and routes.",
+            ("backend/services.py", "backend/routes.py"),
+        ),
+        (
+            "api",
+            "Dashboard API response changes cross backend routes and frontend API clients.",
+            ("backend/routes.py", "frontend/src/apiClient.ts", "frontend/src/api.ts"),
+        ),
+    )
+    for category, value, paths in candidates:
+        evidence = tuple(path for path in paths if database.file_by_path(path) is not None)
+        if evidence:
+            add_manual_memory(database, value, category, source_paths=evidence)
 
 
 def main() -> int:

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.0-beta.8 - Unreleased
+
+- Added local Repository Memory for durable, evidence-backed repository facts.
+- Added schema v2 migration that preserves existing beta.7 index data and adds the `memory` table.
+- Added manual memory CRUD commands: `repomind memory add/list/show/remove/validate/stale`.
+- Added conservative automatic memory extraction from indexed manifests, configuration, layouts, and strong source markers.
+- Added evidence hashing, staleness states, validation behavior, ContextPack memory inclusion, and bounded memory relevance in ranking explanations.
+- Added bounded MCP memory access through `repomind_memory`.
+- Extended stats/status, tests, evaluators, benchmarks, and docs for Repository Memory.
+
 ## 2.0.0-beta.6 - Unreleased
 
 - Added automatic retrieval-time index freshness so context, map, symbol, caller, dependency, impact, and snippet reads reflect saved working-tree changes without a manual refresh.

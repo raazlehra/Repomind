@@ -12,6 +12,7 @@ from pathlib import Path
 from repomind.database import IndexDatabase
 from repomind.formatters import render_context
 from repomind.indexer import Indexer
+from repomind.memory import add_manual_memory
 from repomind.retrieval import ContextRetriever, fit_context_to_budget
 from repomind.utils import approximate_tokens
 
@@ -70,6 +71,7 @@ def evaluate(
     idx.initialize(force=True)
 
     with IndexDatabase(root) as db:
+        seed_memory(db)
         retriever = ContextRetriever(db)
         results = []
         for query, labels in gold.items():
@@ -90,6 +92,7 @@ def evaluate(
                         if isinstance(context_metrics, dict)
                         else {}
                     )
+                    memory = package.get("memory", [])
                     results.append(
                         {
                             "repo": str(root),
@@ -100,12 +103,33 @@ def evaluate(
                             "files_returned": len(selected),
                             "context_bytes": task_context.get("context_output_bytes", 0),
                             "selected_tokens": selected_tokens,
+                            "memory_records": len(memory) if isinstance(memory, list) else 0,
                             "selected_files": selected,
                             "elapsed_ms": int((time.time() - start) * 1000),
                             "metrics": metrics,
                         }
                     )
         return results
+
+
+def seed_memory(database: IndexDatabase) -> None:
+    candidates = (
+        (
+            "security",
+            "Authentication refresh-token behavior is implemented in backend services and routes.",
+            ("backend/services.py", "backend/routes.py"),
+        ),
+        (
+            "api",
+            "Dashboard API response changes cross backend routes and frontend API clients.",
+            ("backend/routes.py", "frontend/src/apiClient.ts", "frontend/src/api.ts"),
+        ),
+    )
+    for category, value, paths in candidates:
+        evidence = tuple(path for path in paths if database.file_by_path(path) is not None)
+        if not evidence:
+            continue
+        add_manual_memory(database, value, category, source_paths=evidence)
 
 
 if __name__ == "__main__":

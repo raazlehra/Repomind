@@ -5,8 +5,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from repomind.config import Config
-from repomind.database import IndexDatabase
+from repomind.database import IndexDatabase, utc_now
 from repomind.indexer import Indexer, IndexResult
+from repomind.memory import sync_automatic_memory
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,6 +78,8 @@ def ensure_index_fresh(repository: str | Path, config: Config | None = None) -> 
     if was_stale:
         result = indexer.refresh()
         changes = result.changes
+    else:
+        _ensure_memory_synced(root)
 
     indexed_parse_errors = _indexed_parse_error_count(root)
     duration = time.perf_counter() - start
@@ -104,6 +107,15 @@ def _indexed_parse_error_count(root: Path) -> int:
             "SELECT COUNT(*) FROM files WHERE parse_error IS NOT NULL"
         ).fetchone()
     return int(row[0]) if row else 0
+
+
+def _ensure_memory_synced(root: Path) -> None:
+    with IndexDatabase(root) as database:
+        if database.get_meta("memory_last_sync_at") is not None:
+            return
+        sync_automatic_memory(database)
+        with database.transaction():
+            database.set_meta("memory_last_sync_at", utc_now())
 
 
 def _freshness_status(was_stale: bool, indexed_parse_errors: int) -> str:

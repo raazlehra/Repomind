@@ -22,6 +22,9 @@ Working tree -> scanner -> hash/change detector -> parser registry
                     +---------------------------+------------------------+
                                                 |
                                                 v
+                              evidence-backed repository memory
+                                                |
+                                                v
                     task ranking -> budgeted context builder -> text/Markdown/JSON
 ```
 
@@ -70,11 +73,15 @@ directories 1 --- * files 1 --- * symbols
                           + --- * dependencies --- files/symbols
 
 architecture(category, name, evidence, confidence)
+memory(key, value, category, confidence, source_type, source_paths,
+       source_symbols, evidence_hash, timestamps, status)
 git_state(key, JSON value)
 meta(schema version, root, timestamps)
 ```
 
 Dependencies retain edge type, numeric confidence, and evidence source. Uncertain references remain unresolved rather than being turned into invented edges.
+
+Schema v2 adds Repository Memory through a forward migration from v1. The migration creates the `memory` table and indexes without deleting existing file, symbol, architecture, graph, or Git state rows.
 
 ## Initial and incremental indexing
 
@@ -118,6 +125,25 @@ Call confidence does not imply runtime certainty. Dynamic calls may be omitted.
 
 Manifest/config readers use `json`, `tomllib`, or bounded text markers. Evidence is stored with every fact. Inputs include package/requirements files, language module files, Docker, Compose, Vite, Next, TypeScript, Maven, and Gradle. Unsupported or malformed manifests produce no guesses.
 
+## Repository Memory
+
+Repository Memory is durable local metadata for high-level facts that are worth reusing across agent sessions. It does not store generic chat memory, embeddings, generated summaries, cloud profiles, or source payloads.
+
+Automatic memory is derived only from strong deterministic evidence that is already indexed: manifest/package dependencies, architecture facts with concrete file evidence, test/API layout, and source markers such as SQLite imports or the MCP server module. Every automatic record has source paths and an evidence hash built from indexed `files.content_hash` values. Automatic facts without indexed evidence are rejected.
+
+Manual memory is explicitly created by the user and marked `manual`. Manual memory may include source paths and symbols, but it is not deleted or invalidated automatically during refresh.
+
+Refresh keeps automatic memory freshness-aware:
+
+```text
+same evidence hash       -> valid
+changed evidence hash    -> needs_validation
+missing deterministic fact or evidence -> stale
+manual memory            -> manual
+```
+
+`repomind memory validate` reruns deterministic extraction and can confirm changed facts when they still hold. If RepoMind cannot prove a fact, it marks uncertainty instead of inventing a replacement.
+
 ## Deterministic ranking
 
 Task retrieval uses no LLM or embedding by default. Ranking signals include:
@@ -136,6 +162,7 @@ If no term matches, configuration/source entry points provide a small navigation
 ```text
 ranked files
    +-> architecture evidence
+   +-> relevant repository memory
    +-> symbols
    +-> relationships
    +-> likely modification area
@@ -152,6 +179,8 @@ ranked files
 ```
 
 This preserves record boundaries and avoids blind string truncation. Level 3 snippets are read from the current working tree, not the database.
+
+Memory relevance contributes a small bounded ranking component and a compact ContextPack section. It is lower priority than exact source, path, symbol, route, and graph evidence and is removed before core file records when budget fitting trims output.
 
 ## Watcher
 

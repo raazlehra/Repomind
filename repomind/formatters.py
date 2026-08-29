@@ -29,6 +29,16 @@ def render_context(package: dict[str, Any], output_format: str) -> str:
                 f"{prefix}{fact['category']}: {fact['name']} (evidence: {fact['evidence']})"
             )
 
+    memory = package.get("memory", [])
+    if memory:
+        lines.extend(("", heading("Repository memory")))
+        for item in memory:
+            prefix = "- " if markdown else "  "
+            evidence = ", ".join(str(path) for path in item.get("source_paths", []))
+            lines.append(
+                f"{prefix}{item['value']} [{item['category']}; {item['status']}; evidence: {evidence}]"
+            )
+
     files = package.get("relevant_files", [])
     if files:
         lines.extend(("", heading("Likely relevant files")))
