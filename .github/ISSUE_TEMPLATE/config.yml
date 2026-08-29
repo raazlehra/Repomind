@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Private beta testing guide
+    url: https://github.com/raazlehra/Repomind/blob/main/docs/BETA_TESTING.md
+    about: Read the beta testing workflow and privacy guidance before filing feedback.

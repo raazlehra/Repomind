@@ -1,0 +1,39 @@
+name: Feature request
+description: Suggest a RepoMind behavior or workflow improvement.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      placeholder: "What repository discovery, context, memory, MCP, or workflow problem are you running into?"
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_behavior
+    attributes:
+      label: Proposed behavior
+      placeholder: "What should RepoMind do?"
+    validations:
+      required: true
+  - type: textarea
+    id: why_it_matters
+    attributes:
+      label: Why it matters
+      placeholder: "How would this improve real repository work?"
+    validations:
+      required: true
+  - type: textarea
+    id: current_workaround
+    attributes:
+      label: Current workaround
+      placeholder: "How are you handling this today?"
+  - type: checkboxes
+    id: privacy_confirmation
+    attributes:
+      label: Privacy confirmation
+      options:
+        - label: I have not included proprietary source code, secrets, credentials, private keys, tokens, or sensitive project details.
+          required: true

@@ -1,0 +1,62 @@
+name: Retrieval feedback
+description: Share how RepoMind context, ranking, freshness, or memory behaved on a real task.
+title: "[Retrieval]: "
+labels:
+  - retrieval-feedback
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use sanitized file paths and high-level descriptions. Do not paste private source code or secrets.
+  - type: textarea
+    id: task_query
+    attributes:
+      label: Task/query
+      placeholder: "repomind context \"fix login redirect\" --explain"
+    validations:
+      required: true
+  - type: textarea
+    id: expected_files
+    attributes:
+      label: Expected files
+      description: List the files you expected RepoMind to select. Redact proprietary path segments if needed.
+      placeholder: "backend/routes.py, backend/services.py, tests/test_auth.py"
+    validations:
+      required: true
+  - type: textarea
+    id: selected_files
+    attributes:
+      label: Selected files
+      description: List the files RepoMind selected. Redact proprietary path segments if needed.
+      placeholder: "backend/routes.py, backend/models.py, tests/test_auth.py"
+    validations:
+      required: true
+  - type: textarea
+    id: useful_noisy
+    attributes:
+      label: Useful/noisy results
+      placeholder: "What was useful? What looked irrelevant, missing, or confusing?"
+    validations:
+      required: true
+  - type: textarea
+    id: explain_feedback
+    attributes:
+      label: --explain feedback
+      placeholder: "Were ranking reasons and score breakdowns understandable and useful?"
+  - type: textarea
+    id: repository_memory_feedback
+    attributes:
+      label: Repository memory feedback
+      placeholder: "Was memory relevant? Was any memory misleading, stale, or noisy?"
+  - type: textarea
+    id: freshness_feedback
+    attributes:
+      label: Freshness feedback
+      placeholder: "Did saved edits appear automatically without refresh/watch? Was status clear?"
+  - type: checkboxes
+    id: privacy_confirmation
+    attributes:
+      label: Privacy confirmation
+      options:
+        - label: I have removed proprietary source code, secrets, credentials, private keys, tokens, and sensitive paths from this report.
+          required: true
