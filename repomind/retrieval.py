@@ -26,6 +26,7 @@ RANKING_WEIGHTS = {
     "symbol_name": 4.0,
     "test_relevance": 2.5,
     "configuration_relevance": 10.0,
+    "content_term": 10.0,
     "migration_relevance": 4.0,
     "git_changed": 1.5,
     "intent": 3.0,
@@ -35,14 +36,139 @@ _TERM_ALIASES = {
     "api": {"route", "routes"},
     "auth": {"authentication"},
     "authentication": {"auth"},
+    "card": {"cards"},
+    "cards": {"card"},
+    "component": {"components"},
+    "components": {"component"},
     "dependencies": {"dependency"},
     "dependency": {"dependencies"},
+    "display": {"render", "view"},
+    "displayed": {"display", "rendered", "shown"},
+    "displaying": {"display", "rendering", "showing"},
+    "generated": {"generate", "generates", "generation"},
+    "generate": {"generated", "generates", "generation"},
+    "hook": {"hooks"},
+    "hooks": {"hook"},
+    "load": {"loaded", "loading", "loads"},
+    "loaded": {"load", "loading", "loads"},
+    "model": {"models"},
+    "models": {"model"},
+    "page": {"pages"},
+    "pages": {"page"},
+    "render": {"display", "rendered", "rendering", "view"},
+    "rendered": {"displayed", "render"},
+    "rendering": {"displaying", "render"},
+    "result": {"results"},
+    "results": {"result"},
     "route": {"api", "routes"},
     "routes": {"api", "route"},
+    "scanner": {"scan", "symbols"},
+    "selected": {"select", "selection"},
+    "stock": {"stocks", "symbols", "ticker", "tickers", "universe", "watchlist"},
+    "stocks": {"stock", "symbols", "ticker", "tickers", "universe", "watchlist"},
+    "symbol": {"symbols"},
+    "symbols": {"symbol"},
+    "ticker": {"stock", "stocks", "symbols", "tickers", "universe", "watchlist"},
+    "tickers": {"stock", "stocks", "symbols", "ticker", "universe", "watchlist"},
+    "universe": {"stock", "stocks", "symbols", "ticker", "tickers", "watchlist"},
+    "view": {"display", "render"},
+    "watchlist": {"stock", "stocks", "symbol", "symbols", "ticker", "tickers", "universe"},
     "websocket": {"websockets"},
     "websockets": {"websocket"},
 }
 _STRUCTURAL_GRAPH_KINDS = {"imports"}
+_AGENT_SKILL_PREFIX = ".agents/skills/"
+_AGENT_QUERY_TERMS = {"agent", "agents", "codex", "instruction", "instructions", "skill", "skills"}
+_APPLICATION_CODE_TERMS = {
+    "analysis",
+    "api",
+    "backend",
+    "card",
+    "cards",
+    "client",
+    "code",
+    "component",
+    "components",
+    "display",
+    "displaying",
+    "engine",
+    "frontend",
+    "hook",
+    "hooks",
+    "model",
+    "models",
+    "page",
+    "pages",
+    "render",
+    "result",
+    "results",
+    "route",
+    "routes",
+    "scanner",
+    "service",
+    "src",
+    "stock",
+    "stocks",
+    "symbol",
+    "symbols",
+    "ticker",
+    "tickers",
+    "universe",
+    "watchlist",
+}
+_UI_DISPLAY_TERMS = {
+    "card",
+    "cards",
+    "component",
+    "components",
+    "display",
+    "displaying",
+    "frontend",
+    "hook",
+    "hooks",
+    "model",
+    "models",
+    "page",
+    "pages",
+    "render",
+    "result",
+    "results",
+    "tsx",
+    "jsx",
+    "view",
+}
+_UI_IMPORT_TRAVERSAL_TERMS = (_UI_DISPLAY_TERMS - {"result", "results"}) | {"api", "client"}
+_UI_ENTRYPOINT_PATH_TERMS = {
+    "card",
+    "cards",
+    "component",
+    "components",
+    "hook",
+    "hooks",
+    "model",
+    "models",
+    "page",
+    "pages",
+    "tsx",
+    "jsx",
+}
+_LOW_SIGNAL_QUERY_TERMS = {
+    "backend",
+    "code",
+    "display",
+    "displayed",
+    "displaying",
+    "find",
+    "frontend",
+    "involved",
+    "result",
+    "results",
+    "render",
+    "rendered",
+    "rendering",
+    "showing",
+    "view",
+}
 _STOPWORDS = {
     "a",
     "an",
@@ -72,7 +198,7 @@ _CONFIG_TERMS = {
     "package",
     "pyproject",
 }
-_SYMBOL_NOISE_TERMS = {"bug", "fix", "test", "tests"}
+_SYMBOL_NOISE_TERMS = {"bug", "fix", "result", "results", "test", "tests"}
 
 
 class ContextRetriever:
@@ -93,7 +219,9 @@ class ContextRetriever:
     ) -> list[RankedFile]:
         task_lower = task.lower().strip()
         intent_labels = intent or classify_task_intent(task)
-        terms = _expand_terms(tokenize(task) - _STOPWORDS)
+        raw_terms = tokenize(task) - _STOPWORDS
+        terms = _expand_terms(raw_terms)
+        application_code_query = _is_application_code_query(raw_terms, terms, intent_labels)
         files = list(self.connection.execute("SELECT * FROM files"))
         symbols = list(
             self.connection.execute(
@@ -109,6 +237,8 @@ class ContextRetriever:
         for row in files:
             file_id = int(row["id"])
             path = str(row["path"])
+            if _is_agent_skill_path(path) and application_code_query:
+                continue
             path_lower = path.lower()
             path_terms = tokenize(path)
             overlap = terms & path_terms
@@ -135,6 +265,14 @@ class ContextRetriever:
                 score += RANKING_WEIGHTS["path_phrase"]
                 _add_component(components, "path", RANKING_WEIGHTS["path_phrase"])
                 reasons.append("path phrase")
+            content_overlap = self._ui_entrypoint_content_overlap(
+                path, str(row["purpose"]), terms
+            )
+            if content_overlap:
+                amount = min(10.0, len(content_overlap) * RANKING_WEIGHTS["content_term"])
+                score += amount
+                _add_component(components, "content", amount)
+                reasons.append("content:" + ",".join(sorted(content_overlap)))
             matched_symbols: list[dict[str, Any]] = []
             symbol_score_total = 0.0
             seen_symbol_overlaps: set[tuple[str, ...]] = set()
@@ -456,7 +594,7 @@ class ContextRetriever:
         if not ranked:
             return
         by_id = {int(row["id"]): row for row in files}
-        seeds = sorted(ranked, key=lambda item: ranked[item].score, reverse=True)[:8]
+        seeds = sorted(ranked, key=lambda item: (-ranked[item].score, ranked[item].path))[:8]
         placeholders = ",".join("?" for _ in seeds)
         query = f"""SELECT source_file_id, target_file_id, kind, confidence FROM dependencies
                     WHERE source_file_id IN ({placeholders}) OR target_file_id IN ({placeholders})"""
@@ -500,16 +638,16 @@ class ContextRetriever:
                     ]
                 ),
             )
-        self._expand_structural_dependencies(ranked, by_id)
+        self._expand_structural_dependencies(ranked, by_id, terms)
 
     def _expand_structural_dependencies(
-        self, ranked: dict[int, RankedFile], by_id: dict[int, sqlite3.Row]
+        self, ranked: dict[int, RankedFile], by_id: dict[int, sqlite3.Row], terms: set[str]
     ) -> None:
-        frontier = sorted(ranked, key=lambda item: ranked[item].score, reverse=True)[:8]
+        frontier = sorted(ranked, key=lambda item: (-ranked[item].score, ranked[item].path))[:8]
         seen = set(frontier)
         for _ in range(2):
             if not frontier:
-                return
+                break
             placeholders = ",".join("?" for _ in frontier)
             query = f"""SELECT source_file_id, target_file_id, kind, confidence FROM dependencies
                         WHERE source_file_id IN ({placeholders})
@@ -530,7 +668,8 @@ class ContextRetriever:
                 row = by_id.get(neighbor)
                 if row is None:
                     continue
-                score = max(1.25, min(3.0, origin_file.score * 0.10 * confidence))
+                ceiling = 6.0 if origin_file.score >= 10.0 else 3.0
+                score = max(1.25, min(ceiling, origin_file.score * 0.18 * confidence))
                 ranked[neighbor] = RankedFile(
                     str(row["path"]),
                     score,
@@ -546,6 +685,115 @@ class ContextRetriever:
                 seen.add(neighbor)
                 next_frontier.append(neighbor)
             frontier = next_frontier
+        self._expand_ui_import_neighborhood(ranked, by_id, terms)
+
+    def _expand_ui_import_neighborhood(
+        self, ranked: dict[int, RankedFile], by_id: dict[int, sqlite3.Row], terms: set[str]
+    ) -> None:
+        if not (terms & _UI_DISPLAY_TERMS):
+            return
+        traversal_terms = (terms - _LOW_SIGNAL_QUERY_TERMS) | _UI_IMPORT_TRAVERSAL_TERMS
+        ranked_ids = sorted(ranked, key=lambda item: (-ranked[item].score, ranked[item].path))
+        frontier: list[int] = []
+        for file_id in ranked_ids:
+            row = by_id[file_id]
+            if str(row["purpose"]) in {"test", "documentation", "configuration"}:
+                continue
+            path_terms = tokenize(str(row["path"]))
+            is_ui_source = "src" in path_terms and bool(path_terms & _UI_ENTRYPOINT_PATH_TERMS)
+            if not is_ui_source:
+                continue
+            frontier.append(file_id)
+            if len(frontier) >= 8:
+                break
+        seen = set(ranked)
+        added = 0
+        for _ in range(3):
+            if not frontier or added >= 8:
+                return
+            placeholders = ",".join("?" for _ in frontier)
+            query = f"""SELECT source_file_id, target_file_id, kind, confidence FROM dependencies
+                        WHERE (source_file_id IN ({placeholders})
+                           OR target_file_id IN ({placeholders}))
+                          AND target_file_id IS NOT NULL
+                          AND kind='imports'
+                        ORDER BY confidence DESC"""
+            next_frontier: list[int] = []
+            candidates: list[
+                tuple[float, str, int, int, sqlite3.Row, sqlite3.Row, set[str]]
+            ] = []
+            for edge in self.connection.execute(query, [*frontier, *frontier]):
+                source = int(edge["source_file_id"])
+                target = int(edge["target_file_id"])
+                if source in frontier and target != source:
+                    origin, neighbor = source, target
+                elif target in frontier and source != target:
+                    origin, neighbor = target, source
+                else:
+                    continue
+                origin_file = ranked[origin]
+                reverse_import = target in frontier and source == neighbor
+                origin_path_terms = tokenize(origin_file.path)
+                if reverse_import and (
+                    origin_file.score < 8.0
+                    or not (origin_path_terms & {"component", "components", "page", "pages"})
+                ):
+                    continue
+                neighbor_row = by_id.get(neighbor)
+                if neighbor_row is None:
+                    continue
+                path = str(neighbor_row["path"])
+                if "src" not in tokenize(path):
+                    continue
+                if _is_agent_skill_path(path):
+                    continue
+                if str(neighbor_row["purpose"]) in {"test", "documentation", "configuration"}:
+                    continue
+                neighbor_overlap = self._neighbor_overlap(neighbor, path, traversal_terms)
+                if not neighbor_overlap:
+                    continue
+                confidence = float(edge["confidence"])
+                score = max(
+                    2.0,
+                    min(9.0, origin_file.score * 0.80 * confidence + len(neighbor_overlap)),
+                )
+                current = ranked.get(neighbor)
+                if current is not None and current.score >= score:
+                    continue
+                candidates.append(
+                    (score, path, origin, neighbor, neighbor_row, edge, neighbor_overlap)
+                )
+            for score, path, origin, neighbor, row, edge, neighbor_overlap in sorted(
+                candidates, key=lambda item: (-item[0], item[1])
+            ):
+                if added >= 8:
+                    break
+                current = ranked.get(neighbor)
+                if current is not None and current.score >= score:
+                    continue
+                origin_file = ranked[origin]
+                ranked[neighbor] = RankedFile(
+                    path,
+                    score,
+                    [
+                        f"graph-ui-import:{edge['kind']}:{origin_file.path}",
+                        "graph terms:" + ",".join(sorted(neighbor_overlap)),
+                    ],
+                    str(row["purpose"]),
+                    str(row["language"]),
+                    [],
+                    {"graph": score},
+                    _ranking_explanations(
+                        [
+                            f"graph-ui-import:{edge['kind']}:{origin_file.path}",
+                            "graph terms:" + ",".join(sorted(neighbor_overlap)),
+                        ]
+                    ),
+                )
+                seen.add(neighbor)
+                next_frontier.append(neighbor)
+                added += 1
+            frontier = next_frontier
 
     def _neighbor_overlap(self, file_id: int, path: str, terms: set[str]) -> set[str]:
         overlap = terms & tokenize(path)
@@ -558,6 +806,24 @@ class ContextRetriever:
             text = f"{row['name']} {row['qualified_name']} {row['signature']}"
             overlap |= terms & tokenize(text)
         return overlap
+
+    def _ui_entrypoint_content_overlap(
+        self, path: str, purpose: str, terms: set[str]
+    ) -> set[str]:
+        if purpose != "source" or not (terms & _UI_DISPLAY_TERMS):
+            return set()
+        path_terms = tokenize(path)
+        if "src" not in path_terms or not (path_terms & _UI_ENTRYPOINT_PATH_TERMS):
+            return set()
+        content_terms = terms - _LOW_SIGNAL_QUERY_TERMS - _UI_ENTRYPOINT_PATH_TERMS
+        if not content_terms:
+            return set()
+        try:
+            source = (self.database.root / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return set()
+        overlap = tokenize(source) & content_terms
+        return {term for term in overlap if len(term) >= 5}
 
     def _git_changed_files(self) -> set[str]:
         row = self.connection.execute(
@@ -708,13 +974,19 @@ def _ranking_explanations(reasons: list[str]) -> list[str]:
             output.append("relevant test file for a fix/test task")
         elif reason == "configuration relevance":
             output.append("configuration file matches dependency/configuration task terms")
+        elif reason.startswith("content:"):
+            output.append(f"content match: {reason.split(':', 1)[1]}")
         elif reason == "migration relevance":
             output.append("database migration relevance")
         elif reason == "git changed":
             output.append("recent-change relevance from saved Git working-tree state")
         elif reason == "memory relevance":
             output.append("bounded repository-memory relevance from evidence-backed facts")
-        elif reason.startswith("graph:") or reason.startswith("graph-structural:"):
+        elif (
+            reason.startswith("graph:")
+            or reason.startswith("graph-structural:")
+            or reason.startswith("graph-ui-import:")
+        ):
             output.append("graph proximity through " + reason.split(":", 1)[1])
         elif reason.startswith("task-intent boost:"):
             output.append("task-intent boost: " + reason.split(":", 1)[1])
@@ -788,3 +1060,17 @@ def _bounded_reduction(total: int | float, selected: int | float) -> float:
     if total <= 0:
         return 0.0
     return round(max(0.0, min(100.0, (1.0 - float(selected) / float(total)) * 100.0)), 2)
+
+
+def _is_agent_skill_path(path: str) -> bool:
+    return path.replace("\\", "/").startswith(_AGENT_SKILL_PREFIX)
+
+
+def _is_application_code_query(
+    raw_terms: set[str], expanded_terms: set[str], intent: list[str]
+) -> bool:
+    if raw_terms & _AGENT_QUERY_TERMS:
+        return False
+    if expanded_terms & _APPLICATION_CODE_TERMS:
+        return True
+    return bool(set(intent) & {"api_change", "database_change", "security", "performance"})

@@ -84,7 +84,7 @@ All boxes are intentionally open until the launch owner verifies the gate for th
 
 ## 8. Release
 
-- [ ] Version - Likely complete from repo evidence: `pyproject.toml` declares `2.0.0b8`; confirm intended public-launch version.
+- [ ] Version - Likely complete from repo evidence: `pyproject.toml` declares `2.0.0b9`; confirm intended public-launch version.
 - [ ] Tag - Requires verification: create or verify the release tag for the exact version.
 - [ ] GitHub prerelease/release - Requires verification: publish or verify the GitHub release entry.
 - [ ] Package build - Requires verification: run `python -m build` and inspect the wheel/sdist.

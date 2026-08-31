@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from repomind.database import IndexDatabase
@@ -8,7 +9,9 @@ from repomind.retrieval import ContextRetriever
 
 
 def test_agent_style_progressive_workflow(tmp_path: Path) -> None:
-    repo = Path("tests/fixtures/realistic_c_fullstack")
+    source = Path("tests/fixtures/realistic_c_fullstack")
+    repo = tmp_path / "realistic_c_fullstack"
+    shutil.copytree(source, repo, ignore=shutil.ignore_patterns(".repomind", "__pycache__"))
     idx = Indexer(repo)
     idx.initialize(force=True)
 

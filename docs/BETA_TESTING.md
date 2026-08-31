@@ -43,7 +43,7 @@ Preferred private-beta workflow:
 ```bash
 git clone <repository-url>
 cd Repomind
-git checkout v2.0.0-beta.8
+git checkout v2.0.0b9
 python -m venv .venv
 ```
 
@@ -76,7 +76,7 @@ repomind --help
 Expected version for this beta:
 
 ```text
-RepoMind 2.0.0b8
+RepoMind 2.0.0b9
 ```
 
 ## Test workflow

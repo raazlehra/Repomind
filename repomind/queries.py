@@ -5,6 +5,14 @@ from collections import deque
 from typing import Any
 
 from repomind.database import IndexDatabase
+from repomind.intent import classify_task_intent
+from repomind.retrieval import (
+    _STOPWORDS,
+    _expand_terms,
+    _is_agent_skill_path,
+    _is_application_code_query,
+)
+from repomind.utils import tokenize
 
 
 def symbol_details(database: IndexDatabase, target: str) -> dict[str, Any]:
@@ -263,10 +271,108 @@ def snippets(database: IndexDatabase, target: str) -> dict[str, Any]:
                 "code": code,
             }
         )
+    if not output:
+        output = _content_snippet_fallback(database, target)
     return {
         "query": target,
         "snippets": output,
         "source_authority": "Source read from the working tree at command time.",
+    }
+
+
+def _content_snippet_fallback(database: IndexDatabase, target: str) -> list[dict[str, Any]]:
+    raw_terms = tokenize(target) - _STOPWORDS
+    terms = _expand_terms(raw_terms)
+    if not terms:
+        return []
+    app_code_query = _is_application_code_query(raw_terms, terms, classify_task_intent(target))
+    rows = list(
+        database.connection.execute(
+            "SELECT id, path, purpose FROM files ORDER BY path"
+        )
+    )
+    matches: list[tuple[float, int, str, int, list[str]]] = []
+    for row in rows:
+        file_id = int(row["id"])
+        path = str(row["path"])
+        purpose = str(row["purpose"])
+        if app_code_query and (
+            _is_agent_skill_path(path) or purpose in {"configuration", "documentation"}
+        ):
+            continue
+        try:
+            lines = (database.root / path).read_text(
+                encoding="utf-8", errors="replace"
+            ).splitlines()
+        except OSError:
+            continue
+        best = _best_matching_line(lines, raw_terms, terms, target)
+        if best is None:
+            continue
+        score, line_number = best
+        path_overlap = terms & tokenize(path)
+        score += len(path_overlap) * 1.5
+        if score < 3.0:
+            continue
+        matches.append((score, file_id, path, line_number, lines))
+
+    matches.sort(key=lambda item: (-item[0], item[2]))
+    return [
+        _format_content_snippet(database, file_id, path, line_number, lines)
+        for _, file_id, path, line_number, lines in matches[:10]
+    ]
+
+
+def _best_matching_line(
+    lines: list[str], raw_terms: set[str], terms: set[str], target: str
+) -> tuple[float, int] | None:
+    best_score = 0.0
+    best_line = 0
+    target_lower = target.lower().strip()
+    for index, line in enumerate(lines, start=1):
+        line_terms = tokenize(line)
+        if not line_terms:
+            continue
+        overlap = terms & line_terms
+        exact_overlap = raw_terms & line_terms
+        if not overlap:
+            continue
+        score = float(len(overlap) + len(exact_overlap))
+        if target_lower and target_lower in line.lower():
+            score += 6.0
+        if score > best_score:
+            best_score = score
+            best_line = index
+    if best_line == 0:
+        return None
+    return best_score, best_line
+
+
+def _format_content_snippet(
+    database: IndexDatabase, file_id: int, path: str, line_number: int, lines: list[str]
+) -> dict[str, Any]:
+    symbol = database.connection.execute(
+        """SELECT qualified_name, line_start, line_end FROM symbols
+           WHERE file_id=? AND line_start <= ? AND line_end >= ?
+           ORDER BY line_start DESC LIMIT 1""",
+        (file_id, line_number, line_number),
+    ).fetchone()
+    if symbol is None:
+        symbol = database.connection.execute(
+            """SELECT qualified_name, line_start, line_end FROM symbols
+               WHERE file_id=? ORDER BY exported DESC, line_start LIMIT 1""",
+            (file_id,),
+        ).fetchone()
+    start = max(1, line_number - 3)
+    end = min(len(lines), line_number + 6, start + 119)
+    code = "\n".join(f"{line}: {lines[line - 1]}" for line in range(start, end + 1))
+    actual_end = int(symbol["line_end"]) if symbol is not None else end
+    return {
+        "symbol": str(symbol["qualified_name"]) if symbol is not None else "content match",
+        "file": path,
+        "lines": f"{start}-{end}",
+        "complete_symbol": end >= actual_end,
+        "code": code,
     }
 
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.0.0-beta.9 - 2026-08-31
+
+- Suppressed `.agents/skills/**` noise for normal application-code retrieval while preserving explicit skill-query retrieval.
+- Improved universe, symbols, tickers, stocks, watchlist, and scanner-symbol retrieval through bounded lexical aliases and dependency/import expansion.
+- Added a lexical/token-based content fallback for snippets when exact symbol matching returns no results.
+- Added bounded TypeScript/React UI display-path traversal across hooks, API clients, models, pages, and result-display components.
+- Added finance/full-stack retrieval regression fixtures covering scanner universe loading, generated analysis display, conceptual snippet queries, and irrelevant agent-skill overlap.
+- Isolated the progressive agent workflow test so simulated edits run against a temporary fixture copy instead of tracked test fixtures.
+
 ## 2.0.0-beta.8 - Unreleased
 
 - Added local Repository Memory for durable, evidence-backed repository facts.
