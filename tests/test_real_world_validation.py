@@ -43,7 +43,7 @@ def test_real_world_validation_outputs_sanitized_json(python_repo: Path, tmp_pat
     }
     assert result["repository"]["repository_id"] == "anon-python-app"
     assert result["repository"]["language_framework"] == "Python test fixture"
-    assert result["repository"]["repomind_version"] == "2.0.0b9"
+    assert result["repository"]["repomind_version"] == "2.0.0b10"
     assert result["repository"]["indexed_file_count"] > 0
     assert result["repository"]["indexed_text_bytes"] > 0
     assert result["repository"]["approximate_repository_tokens"] > 0
