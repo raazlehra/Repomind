@@ -129,6 +129,7 @@ Common CLI commands:
 | `repomind callers SYMBOL` | Show statically detected callers |
 | `repomind dependencies TARGET` | Show outgoing file or symbol dependencies |
 | `repomind impact TARGET` | Estimate direct, indirect, test, route, and UI impact |
+| `repomind test-impact [FILES...]` | Build a bounded, evidence-backed test plan for changes |
 | `repomind snippets SYMBOL` | Read bounded working-tree snippets |
 | `repomind audit [path]` | Generate a deterministic repository audit |
 | `repomind watch` | Debounce filesystem changes and refresh proactively |
@@ -152,6 +153,33 @@ secret_patterns = [".env", ".env.*", "*.pem", "*.key", "credentials*", "secrets*
 
 `generated_directories` and `secret_patterns` replace their defaults when configured, so keep entries you still want excluded. `.git` and `.repomind` remain hard exclusions.
 
+## Change-Aware Test Impact
+
+Analyze dirty working-tree changes, explicit repository-relative files, or a Git base:
+
+```bash
+repomind test-impact -C . --format markdown
+repomind test-impact app/services.py frontend/src/api.ts -C . --format json
+repomind test-impact -C . --base main --format json
+```
+
+The report separates discovery, static relationship evidence, recommended command data,
+and unknown coverage. It classifies each JavaScript/TypeScript test independently and groups
+recommendations by nearest owning `package.json`, framework, and script.
+Python targets are grouped by their nearest project/test configuration boundary; support
+files such as `conftest.py`, fixtures, factories, helpers, and servers are indexed as
+dependency evidence but are not emitted as direct pytest targets.
+
+Analysis is bounded by configurable graph, impacted-area, test, command, evidence, and
+output limits. Every bounded collection reports totals, returned counts, its applicable
+limit, and whether it was truncated. JSON uses the stable
+`repomind.test-impact.v1` schema and repository-relative paths by default.
+
+Test-impact is strictly analysis-only. The CLI and MCP return recommended command strings,
+argument arrays, and repository-relative working directories as data; RepoMind never runs
+those commands or repository test code. Codex, CI, or a developer must separately review,
+approve, and execute recommendations in an appropriately trusted environment.
+
 ## Automatic Freshness
 
 RepoMind read commands check saved working-tree changes before reading the index:
@@ -160,7 +188,7 @@ RepoMind read commands check saved working-tree changes before reading the index
 save source -> retrieval request -> freshness check -> incremental refresh if needed -> current context
 ```
 
-This applies to `context`, `map`, `symbol`, `callers`, `dependencies`, `impact`, `snippets`, and MCP/service equivalents. Saved changes can be reflected without a Git commit, manual refresh, watch mode, or RepoMind restart.
+This applies to `context`, `map`, `symbol`, `callers`, `dependencies`, `impact`, `test-impact`, `snippets`, and MCP/service equivalents. Saved changes can be reflected without a Git commit, manual refresh, watch mode, or RepoMind restart.
 
 Watch mode is optional and proactive. It is useful when you want the index updated soon after filesystem events, but retrieval correctness does not depend on it.
 
@@ -283,14 +311,14 @@ python -m pip install -e .
 repomind mcp
 ```
 
-The MCP server uses stdio transport and exposes status, context, stats, memory, symbol, callers, dependencies, impact, snippets, refresh, and map tools.
+The MCP server uses stdio transport and exposes status, context, stats, memory, symbol, callers, dependencies, impact, bounded test impact, snippets, refresh, and map tools.
 
 Typical MCP flow:
 
 1. Call `repomind_status`.
 2. Call `repomind_context` with `level=1` for the task.
 3. Inspect actual source before editing.
-4. Use `repomind_memory`, `repomind_symbol`, `repomind_dependencies`, `repomind_callers`, `repomind_impact`, or `repomind_snippets` when deeper detail is useful.
+4. Use `repomind_memory`, `repomind_symbol`, `repomind_dependencies`, `repomind_callers`, `repomind_impact`, `repomind_test_impact`, or `repomind_snippets` when deeper detail is useful.
 
 See [docs/MCP.md](docs/MCP.md).
 
@@ -323,7 +351,7 @@ Current beta.8 validation reported 12/12 expected benchmark files retrieved with
 
 RepoMind is local-first by default:
 
-- no repository source execution;
+- no repository source execution by test-impact; it returns command recommendations as data only;
 - no network requests for normal indexing or retrieval;
 - no cloud uploads;
 - no telemetry;

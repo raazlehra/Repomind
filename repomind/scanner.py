@@ -67,6 +67,41 @@ SPECIAL_CONFIGS = {
     "docker-compose.yaml",
 }
 
+TEST_SUPPORT_DIRECTORIES = {
+    "data",
+    "factories",
+    "fixtures",
+    "helpers",
+    "support",
+    "testdata",
+    "utilities",
+}
+
+
+def is_executable_test_path(relative: str) -> bool:
+    """Return whether a path is an executable test target rather than test support."""
+    path = PurePosixPath(relative.replace("\\", "/"))
+    name = path.name.lower()
+    suffix = path.suffix.lower()
+    lower_parts = {part.lower() for part in path.parts[:-1]}
+    if lower_parts & TEST_SUPPORT_DIRECTORIES:
+        return False
+    if name in {"conftest.py", "e2e_server.py"}:
+        return False
+    if suffix == ".py":
+        return name.startswith("test_") or name.endswith("_test.py")
+    if suffix in {".js", ".mjs", ".cjs", ".jsx", ".ts", ".mts", ".cts", ".tsx"}:
+        return ".test." in name or ".spec." in name
+    if suffix in {".java", ".kt", ".kts", ".cs"}:
+        stem = path.stem.lower()
+        return (
+            "test" in lower_parts
+            or "tests" in lower_parts
+            or "androidtest" in lower_parts
+            or stem.endswith(("test", "tests", "testcase"))
+        )
+    return ".maestro" in lower_parts and suffix in {".yaml", ".yml"}
+
 
 @dataclass(frozen=True, slots=True)
 class IgnoreRule:
@@ -180,14 +215,7 @@ def classify_file(relative: str) -> tuple[str, str, bool] | None:
     name = path.name
     suffix = path.suffix.lower()
     lower_parts = {part.lower() for part in path.parts}
-    is_test = (
-        "tests" in lower_parts
-        or "test" in lower_parts
-        or "__tests__" in lower_parts
-        or name.startswith("test_")
-        or ".test." in name
-        or ".spec." in name
-    )
+    is_test = is_executable_test_path(relative)
     if name in SPECIAL_CONFIGS or name.startswith(("vite.config.", "next.config.")):
         return "config", "configuration", is_test
     if suffix in SOURCE_EXTENSIONS:

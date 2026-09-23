@@ -26,6 +26,7 @@ from repomind.memory import (
 from repomind.queries import callers, dependencies, impact, snippets, symbol_details
 from repomind.repository import resolve_repository
 from repomind.retrieval import ContextRetriever, fit_context_to_budget
+from repomind.test_impact import TestImpactLimits, analyze_test_impact
 
 
 def status(repository: str) -> dict[str, Any]:
@@ -166,6 +167,28 @@ def change_impact(repository: str, target: str) -> dict[str, Any]:
         data["repository"] = str(root)
         data["freshness"] = freshness.as_dict()
         return data
+
+
+
+def test_impact(
+    repository: str,
+    changed_files: list[str] | None = None,
+    base: str | None = None,
+    *,
+    limits: TestImpactLimits | None = None,
+    output_mode: str = "compact_json",
+) -> dict[str, Any]:
+    root = _canonical_repository(repository)
+    freshness = ensure_index_fresh(root)
+    with IndexDatabase(root) as database:
+        return analyze_test_impact(
+            database,
+            changed_files,
+            base=base,
+            limits=limits,
+            output_mode=output_mode,  # type: ignore[arg-type]
+            additional_metadata={"freshness": freshness.as_dict()},
+        )
 
 
 def bounded_snippets(

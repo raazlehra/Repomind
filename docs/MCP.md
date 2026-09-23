@@ -69,6 +69,30 @@ Returns outgoing structural dependencies for an indexed file or symbol target.
 
 Returns direct dependents, possible indirect dependents, affected tests, affected routes, UI components where known, and confidence/relationship types. Heuristic impact is labelled as heuristic.
 
+`repomind_test_impact`
+
+Builds a bounded change-aware analysis from working-tree changes, a Git `base`, or
+explicit `changed_files`. It returns repository-relative evidence, deterministic
+recommended command strings, argument arrays, working directories, budgets, and truncation
+metadata. Vitest, Jest, Playwright, Python, Gradle, and other test families remain separate
+recommendations owned by their nearest project manifest.
+
+Change-selection truncation metadata reports retained and processed counts, whether
+discovery completed, whether `total_discovered` is only a lower bound, truncation reasons,
+and bounded Git stdout/stderr diagnostics. `total_discovered_is_lower_bound` is false when
+an exact supplied-sequence total is known, even if only `max_changed_files` entries were
+processed.
+
+Evidence metadata distinguishes bounded retention from bounded discovery. Reaching
+`max_evidence_candidates` can truncate retained evidence while discovery remains complete;
+reaching `max_evidence_candidates_scanned` makes the discovered count a lower bound.
+Explicit changed-file paths reject NUL bytes, invalid UTF-8 scalar data, drive-relative
+paths, traversal, and absolute paths outside the repository.
+
+The tool is strictly analysis-only: its schema has no execution option and RepoMind never
+runs recommended commands or repository test code. Codex, CI, or a developer must separately
+review, approve, and execute a recommendation in an appropriately trusted environment.
+
 `repomind_snippets`
 
 Returns bounded source snippets for an indexed symbol or file target. Use `line_bound` and `token_bound` to keep snippets compact. This tool is not a generic filesystem reader.
@@ -86,7 +110,7 @@ Returns the compact repository map with optional depth and symbols.
 1. Call `repomind_status` for the explicit repository.
 2. Call `repomind_context` with `level=1` for the task.
 3. Inspect actual source files in the coding environment before changing code.
-4. Query `repomind_symbol`, `repomind_dependencies`, `repomind_callers`, or `repomind_impact` only when deeper structural information is needed.
+4. Query `repomind_symbol`, `repomind_dependencies`, `repomind_callers`, `repomind_impact`, or `repomind_test_impact` only when deeper structural or test-plan information is needed.
 5. Query `repomind_memory` when the agent needs durable repository facts without a full context pack.
 6. Use `repomind_snippets` for bounded snippets when helpful.
 7. After significant edits, call `repomind_context` or another read tool normally; read tools refresh stale saved changes before reading the index. Use `repomind_refresh` when you want an explicit refresh result.
@@ -115,9 +139,9 @@ RepoMind MCP remains local-first:
 - no telemetry
 - no cloud upload
 - no external AI APIs
-- no repository source execution
+- no repository source execution by test-impact; commands and argument arrays are returned as data only
 - no `eval` or `exec`
-- no shelling out for RepoMind query tools
+- no shell execution for query tools
 - no automatic storage of secret file contents or secret-like evidence paths
 
 Every tool operates on an explicit repository path. Source snippets are served only for indexed symbols or indexed file paths under that repository. The MCP adapter should not be treated as a generic filesystem server.

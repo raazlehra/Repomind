@@ -43,6 +43,8 @@ from repomind.services import (
 from repomind.services import (
     stats as service_stats,
 )
+from repomind.services import test_impact as service_test_impact
+from repomind.test_impact import TestImpactLimits, render_test_impact
 from repomind.watcher import watch_repository, watchdog_available
 
 _FORMATS = ("text", "markdown", "json")
@@ -152,6 +154,42 @@ def build_parser() -> argparse.ArgumentParser:
     audit_parser.add_argument(
         "--no-refresh", action="store_true", help="use the existing index without refreshing"
     )
+
+    test_impact_parser = subparsers.add_parser(
+        "test-impact",
+        help="map code changes to affected areas, related tests, gaps, and test commands",
+    )
+    test_impact_parser.add_argument(
+        "files",
+        nargs="*",
+        help="changed repository-relative paths (default: current working-tree changes)",
+    )
+    _repository_argument(test_impact_parser)
+    test_impact_parser.add_argument(
+        "--base", help="analyze files reported by git diff from this revision"
+    )
+    test_impact_parser.add_argument(
+        "--max-analysis-seconds", type=float, default=10.0
+    )
+    test_impact_parser.add_argument("--max-graph-nodes", type=int, default=500)
+    test_impact_parser.add_argument("--max-graph-edges", type=int, default=2000)
+    test_impact_parser.add_argument("--max-impacted-areas", type=int, default=100)
+    test_impact_parser.add_argument("--max-tests", type=int, default=50)
+    test_impact_parser.add_argument("--max-commands", type=int, default=20)
+    test_impact_parser.add_argument("--max-evidence", type=int, default=10)
+    test_impact_parser.add_argument("--max-output-bytes", type=int, default=200_000)
+    test_impact_parser.add_argument("--max-changed-files", type=int, default=200)
+    test_impact_parser.add_argument("--max-path-length", type=int, default=1_000)
+    test_impact_parser.add_argument("--max-test-candidates", type=int, default=5_000)
+    test_impact_parser.add_argument("--max-migration-candidates", type=int, default=1_000)
+    test_impact_parser.add_argument("--max-route-candidates", type=int, default=5_000)
+    test_impact_parser.add_argument("--max-direct-edges-per-file", type=int, default=500)
+    test_impact_parser.add_argument("--max-indirect-edges-per-file", type=int, default=500)
+    test_impact_parser.add_argument("--max-impacted-candidates", type=int, default=1_000)
+    test_impact_parser.add_argument("--max-relevant-test-candidates", type=int, default=500)
+    test_impact_parser.add_argument("--max-evidence-candidates", type=int, default=5_000)
+    test_impact_parser.add_argument("--max-command-candidates", type=int, default=100)
+    test_impact_parser.add_argument("--format", choices=_FORMATS, default="text")
 
     for name, help_text in (
         ("symbol", "show matching symbol metadata"),
@@ -348,6 +386,47 @@ def _dispatch(args: argparse.Namespace) -> int:
             }
             print(render_records(data, "text"), end="")
         return 0
+    if command == "test-impact":
+        limits = TestImpactLimits(
+            max_graph_nodes=int(args.max_graph_nodes),
+            max_graph_edges=int(args.max_graph_edges),
+            max_impacted_areas=int(args.max_impacted_areas),
+            max_tests=int(args.max_tests),
+            max_commands=int(args.max_commands),
+            max_evidence_per_result=int(args.max_evidence),
+            max_output_bytes=int(args.max_output_bytes),
+            max_changed_files=int(args.max_changed_files),
+            max_path_length=int(args.max_path_length),
+            max_test_candidates_scanned=int(args.max_test_candidates),
+            max_migration_candidates_scanned=int(args.max_migration_candidates),
+            max_route_candidates_scanned=int(args.max_route_candidates),
+            max_direct_edges_per_file=int(args.max_direct_edges_per_file),
+            max_indirect_edges_per_file=int(args.max_indirect_edges_per_file),
+            max_impacted_candidates=int(args.max_impacted_candidates),
+            max_relevant_test_candidates=int(args.max_relevant_test_candidates),
+            max_evidence_candidates=int(args.max_evidence_candidates),
+            max_command_candidates=int(args.max_command_candidates),
+            max_analysis_seconds=float(args.max_analysis_seconds),
+        )
+        data = service_test_impact(
+            str(args.repository),
+            list(args.files) or None,
+            args.base,
+            limits=limits,
+            output_mode=(
+                "pretty_json" if str(args.format) == "json" else "compact_json"
+            ),
+        )
+        rendered = render_test_impact(
+            data, str(args.format), limits.max_output_bytes
+        )
+        output_buffer = getattr(sys.stdout, "buffer", None)
+        if output_buffer is None:
+            sys.stdout.write(rendered)
+        else:
+            output_buffer.write(rendered.encode("utf-8"))
+        return 0
+
     if command in {"symbol", "callers", "dependencies", "impact", "snippets"}:
         root = resolve_repository(Path(args.repository))
         freshness = ensure_index_fresh(root)

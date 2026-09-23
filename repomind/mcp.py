@@ -4,8 +4,10 @@ from collections.abc import Callable
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
+from pydantic import StrictFloat, StrictInt
 
 from repomind import __version__, services
+from repomind.test_impact import TestImpactLimits
 
 ToolHandler = Callable[..., dict[str, Any]]
 
@@ -65,6 +67,72 @@ def create_server(debug: bool = False) -> MCPServer:
     def repomind_impact(repository: str, target: str) -> dict[str, Any]:
         """Estimate dependents, affected tests, routes, and UI impact for a target."""
         return safe(services.change_impact, repository, target)
+
+
+    @server.tool()
+    def repomind_test_impact(
+        repository: str,
+        changed_files: list[str] | None = None,
+        base: str | None = None,
+        max_graph_nodes: StrictInt = 500,
+        max_graph_edges: StrictInt = 2_000,
+        max_impacted_areas: StrictInt = 100,
+        max_tests: StrictInt = 50,
+        max_commands: StrictInt = 20,
+        max_evidence_per_result: StrictInt = 10,
+        max_output_bytes: StrictInt = 200_000,
+        max_changed_files: StrictInt = 200,
+        max_path_length: StrictInt = 1_000,
+        max_test_candidates_scanned: StrictInt = 5_000,
+        max_migration_candidates_scanned: StrictInt = 1_000,
+        max_route_candidates_scanned: StrictInt = 5_000,
+        max_direct_edges_per_file: StrictInt = 500,
+        max_indirect_edges_per_file: StrictInt = 500,
+        max_impacted_candidates: StrictInt = 1_000,
+        max_relevant_test_candidates: StrictInt = 500,
+        max_evidence_candidates: StrictInt = 5_000,
+        max_command_candidates: StrictInt = 100,
+        max_analysis_seconds: StrictFloat | StrictInt = 10.0,
+    ) -> dict[str, Any]:
+        """Analyze changes and return bounded test recommendations without executing them."""
+        try:
+            limits = TestImpactLimits(
+                max_graph_nodes=max_graph_nodes,
+                max_graph_edges=max_graph_edges,
+                max_impacted_areas=max_impacted_areas,
+                max_tests=max_tests,
+                max_commands=max_commands,
+                max_evidence_per_result=max_evidence_per_result,
+                max_output_bytes=max_output_bytes,
+                max_changed_files=max_changed_files,
+                max_path_length=max_path_length,
+                max_test_candidates_scanned=max_test_candidates_scanned,
+                max_migration_candidates_scanned=max_migration_candidates_scanned,
+                max_route_candidates_scanned=max_route_candidates_scanned,
+                max_direct_edges_per_file=max_direct_edges_per_file,
+                max_indirect_edges_per_file=max_indirect_edges_per_file,
+                max_impacted_candidates=max_impacted_candidates,
+                max_relevant_test_candidates=max_relevant_test_candidates,
+                max_evidence_candidates=max_evidence_candidates,
+                max_command_candidates=max_command_candidates,
+                max_analysis_seconds=max_analysis_seconds,
+            )
+        except ValueError as exc:
+            return services.error_payload(exc, debug=debug)
+        return safe(
+            services.test_impact,
+            repository,
+            changed_files,
+            base,
+            limits=limits,
+        )
+
+    test_impact_tool = server._tool_manager.get_tool("repomind_test_impact")
+    if test_impact_tool is not None:
+        argument_model = test_impact_tool.fn_metadata.arg_model
+        argument_model.model_config["extra"] = "forbid"
+        argument_model.model_rebuild(force=True)
+        test_impact_tool.parameters = argument_model.model_json_schema(by_alias=True)
 
     @server.tool()
     def repomind_snippets(

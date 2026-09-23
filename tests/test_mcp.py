@@ -38,6 +38,7 @@ async def test_mcp_server_startup_and_status(python_repo: Path) -> None:
         "repomind_callers",
         "repomind_dependencies",
         "repomind_impact",
+        "repomind_test_impact",
         "repomind_snippets",
         "repomind_refresh",
         "repomind_map",

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Added bounded, change-aware `test-impact` analysis with per-test framework ownership,
+  migration and cross-stack route/API evidence, deterministic commands, and visible truncation metadata.
+- Kept test-impact strictly analysis-only across CLI and MCP: it returns bounded command
+  recommendations as data and never executes repository code.
+
 ## 2.0.0-beta.9 - 2026-08-31
 
 - Suppressed `.agents/skills/**` noise for normal application-code retrieval while preserving explicit skill-query retrieval.
