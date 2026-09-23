@@ -79,7 +79,7 @@ The runner initializes or refreshes RepoMind's local index for the target reposi
 
 ## Review before sharing
 
-Before attaching results to an issue or private beta report:
+Before attaching results to an issue or beta report:
 
 1. Open the JSON or Markdown output locally.
 2. Confirm it contains no proprietary source code.

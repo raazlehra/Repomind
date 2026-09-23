@@ -33,51 +33,46 @@ RepoMind is designed for static local analysis. It should not execute repository
 - Git
 - Python 3.11 or newer
 - A terminal: PowerShell, Command Prompt, bash, zsh, or similar
-- Access to the private RepoMind GitHub repository during private beta
+- Access to this repository's GitHub Releases page
 - A real repository you own or control
 
 ## Installation
 
-Preferred private-beta workflow:
+The currently published beta is `v2.0.0b9`. Download its wheel from the
+[GitHub Releases page](https://github.com/raazlehra/Repomind/releases). The source tree's
+`2.0.0b10` version is an unreleased candidate; do not look for or construct a b10 release URL
+until that release exists.
 
-```bash
-git clone <repository-url>
-cd Repomind
-git checkout v2.0.0b9
-python -m venv .venv
-```
+Do not use plain `pip install repomind`. The package with that name on PyPI is a different
+project.
 
-Activate the environment on Windows PowerShell:
+Create and activate an isolated environment on Windows PowerShell, then install the downloaded
+wheel:
 
 ```powershell
+python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+python -m pip install "C:\Downloads\repomind-2.0.0b9-py3-none-any.whl"
 ```
 
-Activate the environment on macOS or Linux:
+Verify both entry points:
 
-```bash
-source .venv/bin/activate
-```
-
-Install RepoMind from the checked-out tag:
-
-```bash
-python -m pip install --upgrade pip
-python -m pip install -e .
-```
-
-Verify the installation:
-
-```bash
+```powershell
 repomind --version
 repomind --help
+python -m repomind --help
 ```
 
-Expected version for this beta:
+The expected version for the currently published beta is:
 
 ```text
 RepoMind 2.0.0b9
 ```
+
+Contributors who intentionally need an editable source install should follow
+[CONTRIBUTING.md](../CONTRIBUTING.md). Public beta installation should use the release wheel.
+See [Installation and lifecycle](INSTALLATION.md) for optional extras, candidate validation,
+upgrade scope, and uninstall/reinstall behavior.
 
 ## Test workflow
 
@@ -210,4 +205,4 @@ When reporting problems:
 - prefer minimal synthetic reproductions when possible;
 - share only the command, sanitized output, and high-level project context needed to understand the issue.
 
-Private beta access to the RepoMind repository does not make your own project source public. Keep your project's confidentiality rules in place while testing.
+Access to the RepoMind repository does not make your own project source public. Keep your project's confidentiality rules in place while testing.

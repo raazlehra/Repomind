@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.0.0-beta.10 - Unreleased
 
 - Added bounded, change-aware `test-impact` analysis with per-test framework ownership,
   migration and cross-stack route/API evidence, deterministic commands, and visible truncation metadata.

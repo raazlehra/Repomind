@@ -15,12 +15,12 @@ All boxes are intentionally open until the launch owner verifies the gate for th
 
 ## 2. Installation
 
-- [ ] Clean-machine install tested - Requires verification: test from a fresh environment, not the existing dev checkout.
-- [ ] Windows tested - Requires verification: `docs/BETA_TESTING.md` includes PowerShell setup, but record an actual Windows install and smoke run.
-- [ ] macOS/Linux tested if possible - Requires verification: docs include Unix activation; record actual install and smoke runs where available.
+- [ ] Clean-machine install tested - Requires verification: Day 7 passed in new process-isolated Windows virtual environments, but a fresh VM or user profile is still unverified.
+- [ ] Windows tested - Likely complete from repo evidence: Day 7 recorded a wheel install/lifecycle smoke run on Windows with Python 3.14.7, paths containing spaces, a non-C: drive, and execution outside the source checkout.
+- [ ] macOS/Linux tested if possible - Requires verification: no macOS or Linux lifecycle run is recorded.
 - [ ] Python requirements documented - Likely complete from repo evidence: `README.md`, `docs/BETA_TESTING.md`, and `pyproject.toml` require Python 3.11+.
-- [ ] Uninstall instructions - Requires verification: no dedicated uninstall instructions found.
-- [ ] Upgrade instructions - Requires verification: no public upgrade section found beyond install-from-checkout beta guidance.
+- [ ] Uninstall instructions - Likely complete from repo evidence: `docs/INSTALLATION.md` documents package removal, preserved repository data, and separate MCP-client registration cleanup.
+- [ ] Upgrade instructions - Likely complete from repo evidence: `docs/INSTALLATION.md` documents the exact beta-9/schema-2 to local b10-candidate compatibility scope tested on Day 7.
 - [ ] v1/v2 index migration tested - Likely complete from repo evidence: `tests/test_memory.py` covers v1/beta.7-style migration to schema v2; `CHANGELOG.md` and `ARCHITECTURE.md` document the migration.
 
 ## 3. Functional
@@ -84,11 +84,11 @@ All boxes are intentionally open until the launch owner verifies the gate for th
 
 ## 8. Release
 
-- [ ] Version - Likely complete from repo evidence: `pyproject.toml` declares `2.0.0b9`; confirm intended public-launch version.
+- [ ] Version - Likely complete from repo evidence: source metadata declares the unreleased `2.0.0b10` candidate while the published GitHub beta remains `v2.0.0b9`; confirm the intended release version before tagging.
 - [ ] Tag - Requires verification: create or verify the release tag for the exact version.
 - [ ] GitHub prerelease/release - Requires verification: publish or verify the GitHub release entry.
 - [ ] Package build - Requires verification: run `python -m build` and inspect the wheel/sdist.
-- [ ] Installation verification - Requires verification: install from the built artifact in a clean environment and run smoke commands.
+- [ ] Installation verification - Likely complete from repo evidence: Day 7 installed the b10 wheel into disposable virtual environments and covered CLI, repository, MCP, upgrade, uninstall, and reinstall lifecycle steps; a fresh OS/user profile remains pending.
 - [ ] Rollback instructions - Requires verification: no public rollback instructions found.
 
 ## 9. Marketing/demo

@@ -43,21 +43,35 @@ RepoMind focuses on reusable, local, deterministic signals:
 
 Python 3.11 or newer is required.
 
-From a checkout:
+Install a wheel downloaded from the project's
+[GitHub Releases](https://github.com/raazlehra/Repomind/releases) page in an isolated environment:
 
-```bash
-python -m pip install .
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install "C:\Downloads\repomind-<version>-py3-none-any.whl"
+repomind --version
+repomind --help
+```
+
+Do **not** use plain `pip install repomind`: that name on PyPI currently resolves to a
+different project. The published RepoMind beta is `v2.0.0b9`; `2.0.0b10` in the current
+source tree is an unreleased candidate, not an available release asset.
+
+For contributors working from a trusted checkout:
+
+```powershell
 python -m pip install -e ".[dev]"
 ```
 
-Optional extras:
+The base package includes the local MCP server dependency. The local wheel can be installed
+with `[watch]` or `[treesitter]` extras; this keeps package resolution tied to the downloaded
+artifact instead of the unrelated PyPI project. Without `watchdog`, `repomind watch` is
+unavailable, but retrieval-time freshness checks still work. Without compatible Tree-sitter
+grammars, built-in deterministic JavaScript and TypeScript parsers remain active.
 
-```bash
-python -m pip install "repomind[watch]"
-python -m pip install "repomind[treesitter]"
-```
-
-The base package includes the local MCP server dependency. Without `watchdog`, `repomind watch` is unavailable, but retrieval-time freshness checks still work. Without compatible Tree-sitter grammars, built-in deterministic JavaScript and TypeScript parsers remain active.
+See [Installation and lifecycle](docs/INSTALLATION.md) for the verified Windows flow,
+optional-extra syntax, candidate builds, beta-9 upgrade behavior, and uninstall/reinstall details.
 
 ## Quick Start
 
@@ -306,9 +320,8 @@ The skill instructs Codex to query RepoMind before broad scanning, use results f
 
 RepoMind can run as a local MCP server for coding agents:
 
-```bash
-python -m pip install -e .
-repomind mcp
+```powershell
+& "C:\path\to\repomind-venv\Scripts\python.exe" -m repomind mcp
 ```
 
 The MCP server uses stdio transport and exposes status, context, stats, memory, symbol, callers, dependencies, impact, bounded test impact, snippets, refresh, and map tools.
@@ -320,7 +333,8 @@ Typical MCP flow:
 3. Inspect actual source before editing.
 4. Use `repomind_memory`, `repomind_symbol`, `repomind_dependencies`, `repomind_callers`, `repomind_impact`, `repomind_test_impact`, or `repomind_snippets` when deeper detail is useful.
 
-See [docs/MCP.md](docs/MCP.md).
+See [docs/MCP.md](docs/MCP.md) for verified Codex setup, current Copilot CLI and VS Code
+configuration guidance, optional Claude Code guidance, and validation boundaries.
 
 ## Stats / Metrics
 

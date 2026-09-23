@@ -9,7 +9,7 @@ Use a clean, disposable clone of a public repository. The commands below use Rep
 Open a terminal at the repository root:
 
 ```powershell
-cd C:\Users\raazl\OneDrive\Documents\Repomind
+Set-Location "C:\path\to\Repomind"
 ```
 
 Use a readable terminal font, keep the window wide, and avoid showing environment files, credentials, customer data, private remotes, or proprietary paths. If the repository is not public, use a synthetic or open-source clone with similar structure.

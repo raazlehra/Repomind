@@ -6,34 +6,126 @@ RepoMind MCP exposes the existing local RepoMind index and retrieval APIs to cod
 
 RepoMind uses the standard local MCP stdio transport. This is the simplest transport for local coding-agent usage because the agent launches `repomind mcp` as a child process and communicates over stdin/stdout. RepoMind does not define a custom protocol.
 
-## Installation
+## Server command
 
-Install RepoMind in the target environment:
+Install a release wheel as described in [Installation and lifecycle](INSTALLATION.md). Configure
+clients with the absolute Python interpreter from that environment:
 
-```bash
-pip install -e .
+```powershell
+& "C:\path\to\repomind-venv\Scripts\python.exe" -m repomind mcp
 ```
 
-Then configure an MCP-capable coding agent to launch:
+Using `python -m repomind mcp` binds the server to a known installation and avoids a stale
+`repomind` command shim elsewhere on `PATH`. The server reserves stdout for JSON-RPC protocol
+messages; diagnostics belong on stderr.
 
-```bash
-repomind mcp
+## Codex CLI and IDE extension — verified
+
+The installed Codex CLI's current syntax for a local stdio server is:
+
+```powershell
+$repomindPython = (Resolve-Path "C:\path\to\repomind-venv\Scripts\python.exe").Path
+codex mcp list
+codex mcp get repomind  # run only if the name is already listed
+codex mcp add repomind -- $repomindPython -m repomind mcp
+codex mcp list
+codex mcp get repomind
 ```
 
-Example client configuration shape:
+Choose another server name, such as `repomind-dev`, rather than overwriting an existing entry
+that points to a different installation. Codex stores MCP configuration in its `config.toml`;
+the Codex CLI, Codex IDE extension, and ChatGPT desktop app share it on the same Codex host.
+Restart the current CLI/app/extension session if a newly added server is not in that session's
+already-discovered tool catalog. Depending on local policy, the client can prompt before MCP tool
+calls.
+
+This configuration and RepoMind's initialization, tool discovery, status call, and functional
+retrieval were exercised through Codex during Days 6 and 7. The commands above were rechecked
+against Codex CLI 0.141.0 on Day 8. See the
+[official Codex MCP documentation](https://learn.chatgpt.com/docs/extend/mcp.md) for current client
+configuration behavior. A client error saying its configured model needs a newer client is a
+Codex upgrade issue, not a reason to lower the model as part of normal RepoMind setup.
+
+## GitHub Copilot CLI — configuration guidance; functional validation pending
+
+Current GitHub documentation defines the stdio form below:
+
+```powershell
+$repomindPython = (Resolve-Path "C:\path\to\repomind-venv\Scripts\python.exe").Path
+copilot mcp add repomind -- $repomindPython -m repomind mcp
+copilot mcp list --json
+copilot mcp get repomind --json
+```
+
+`copilot mcp add` writes user configuration under `~/.copilot/mcp-config.json`. Copilot CLI also
+loads project configuration from repository-root `.mcp.json` or `.github/mcp.json` after folder
+trust is granted. A project-local example is:
 
 ```json
 {
   "mcpServers": {
     "repomind": {
-      "command": "repomind",
-      "args": ["mcp"]
+      "type": "local",
+      "command": "C:\\path\\to\\repomind-venv\\Scripts\\python.exe",
+      "args": ["-m", "repomind", "mcp"],
+      "tools": ["*"]
     }
   }
 }
 ```
 
-Exact configuration keys vary by agent. This project currently validates the server with the official Python MCP SDK in-process client and stdio launch command availability; it does not claim compatibility with agents that have not been tested.
+Review project MCP files before trusting a repository. Copilot CLI can require approval for MCP
+tool calls. Its configuration is distinct from VS Code's `.vscode/mcp.json`; Copilot CLI does not
+read that VS Code-specific `servers` shape directly. See GitHub's
+[Copilot CLI MCP instructions](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers).
+
+RepoMind's MCP protocol was validated with Codex and direct MCP clients, but Copilot CLI was not
+installed in the Day 6 or Day 8 environment. These commands therefore document the current
+supported Copilot interface; a RepoMind-through-Copilot functional transcript remains pending.
+
+## VS Code Copilot Chat — configuration guidance; functional validation pending
+
+For a workspace-specific VS Code configuration, create `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "repomind": {
+      "type": "stdio",
+      "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "repomind", "mcp"]
+    }
+  }
+}
+```
+
+This example assumes RepoMind is installed in the workspace's `.venv`. Otherwise replace
+`command` with the user's own absolute environment interpreter path. VS Code's file uses the
+`servers` top-level key; portable/Copilot CLI project files use `mcpServers`. Workspace MCP servers
+are blocked in Restricted Mode, and local MCP processes can execute code with the user's access,
+so review the file before granting Workspace Trust or tool approval. Use **MCP: List Servers** to
+start, inspect, or troubleshoot the server. See the
+[official VS Code MCP guide](https://code.visualstudio.com/docs/agent-customization/mcp-servers).
+
+The configuration shape is current official guidance. A RepoMind-through-VS Code Copilot Chat
+functional run was not performed during Days 6–8.
+
+## Claude Code — documented only
+
+Claude Code was available locally and its installed help matched the current official stdio form,
+but RepoMind was not registered or functionally queried through Claude during Day 8:
+
+```powershell
+$repomindPython = (Resolve-Path "C:\path\to\repomind-venv\Scripts\python.exe").Path
+claude mcp add --transport stdio --scope local repomind -- $repomindPython -m repomind mcp
+claude mcp list
+claude mcp get repomind
+```
+
+Use `--scope project` only when a shared project configuration is intended and reviewed. Project
+servers require workspace trust/approval. See Anthropic's
+[Claude Code MCP documentation](https://code.claude.com/docs/en/mcp). This section is setup
+guidance, not a claim of completed RepoMind+Claude compatibility testing.
 
 ## Tools
 
@@ -110,10 +202,11 @@ Returns the compact repository map with optional depth and symbols.
 1. Call `repomind_status` for the explicit repository.
 2. Call `repomind_context` with `level=1` for the task.
 3. Inspect actual source files in the coding environment before changing code.
-4. Query `repomind_symbol`, `repomind_dependencies`, `repomind_callers`, `repomind_impact`, or `repomind_test_impact` only when deeper structural or test-plan information is needed.
-5. Query `repomind_memory` when the agent needs durable repository facts without a full context pack.
-6. Use `repomind_snippets` for bounded snippets when helpful.
-7. After significant edits, call `repomind_context` or another read tool normally; read tools refresh stale saved changes before reading the index. Use `repomind_refresh` when you want an explicit refresh result.
+4. Query `repomind_symbol`, `repomind_dependencies`, `repomind_callers`, or `repomind_impact` only when deeper structural detail is needed.
+5. Use `repomind_test_impact` before choosing tests for changed or explicitly selected files; review its evidence and commands rather than executing recommendations blindly.
+6. Query `repomind_memory` when the agent needs durable repository facts without a full context pack.
+7. Use `repomind_snippets` for bounded snippets when helpful.
+8. After significant edits, call `repomind_context` or another read tool normally; read tools refresh stale saved changes before reading the index. Use `repomind_refresh` when you want an explicit refresh result.
 
 Start with level 1 context. Use level 3 only when the task genuinely needs deeper imports, relationships, and snippets.
 
@@ -176,3 +269,6 @@ Other common errors include `invalid_arguments` and `repomind_error`. Raw intern
 - JS/TS extraction is deterministic structural extraction, with optional Tree-sitter support for declaration spans.
 - Approximate tokens and context reduction percentages are local estimates, not provider billing-token counts or guaranteed credit savings.
 - Repository Memory is deterministic and evidence-backed; it is not generic AI memory, semantic embeddings, or generated architecture prose.
+- RepoMind evidence is not a security certification, and test-impact recommendations are evidence-based suggestions rather than guaranteed exhaustive coverage.
+- Treat truncation and lower-bound metadata as part of the result; a bounded result must not be presented as a complete repository census.
+- Confidence labels are retrieval/static-analysis signals, not calibrated probabilities.
