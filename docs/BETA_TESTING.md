@@ -38,10 +38,8 @@ RepoMind is designed for static local analysis. It should not execute repository
 
 ## Installation
 
-The currently published beta is `v2.0.0b9`. Download its wheel from the
-[GitHub Releases page](https://github.com/raazlehra/Repomind/releases). The source tree's
-`2.0.0b10` version is an unreleased candidate; do not look for or construct a b10 release URL
-until that release exists.
+The current published beta is `v2.0.0b10`. Download its wheel from the
+[GitHub Releases page](https://github.com/raazlehra/Repomind/releases).
 
 Do not use plain `pip install repomind`. The package with that name on PyPI is a different
 project.
@@ -52,7 +50,7 @@ wheel:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install "C:\Downloads\repomind-2.0.0b9-py3-none-any.whl"
+python -m pip install "C:\Downloads\repomind-2.0.0b10-py3-none-any.whl"
 ```
 
 Verify both entry points:
@@ -66,12 +64,12 @@ python -m repomind --help
 The expected version for the currently published beta is:
 
 ```text
-RepoMind 2.0.0b9
+RepoMind 2.0.0b10
 ```
 
 Contributors who intentionally need an editable source install should follow
 [CONTRIBUTING.md](../CONTRIBUTING.md). Public beta installation should use the release wheel.
-See [Installation and lifecycle](INSTALLATION.md) for optional extras, candidate validation,
+See [Installation and lifecycle](INSTALLATION.md) for optional extras, local-build validation,
 upgrade scope, and uninstall/reinstall behavior.
 
 ## Test workflow

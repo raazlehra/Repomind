@@ -56,8 +56,8 @@ repomind --help
 ```
 
 Do **not** use plain `pip install repomind`: that name on PyPI currently resolves to a
-different project. The published RepoMind beta is `v2.0.0b9`; `2.0.0b10` in the current
-source tree is an unreleased candidate, not an available release asset.
+different project. The current RepoMind beta is `v2.0.0b10`; install its wheel from the
+project's GitHub Releases page.
 
 For contributors working from a trusted checkout:
 
@@ -72,7 +72,7 @@ unavailable, but retrieval-time freshness checks still work. Without compatible 
 grammars, built-in deterministic JavaScript and TypeScript parsers remain active.
 
 See [Installation and lifecycle](docs/INSTALLATION.md) for the verified Windows flow,
-optional-extra syntax, candidate builds, beta-9 upgrade behavior, and uninstall/reinstall details.
+optional-extra syntax, local builds, beta-9 upgrade behavior, and uninstall/reinstall details.
 
 ## Quick Start
 

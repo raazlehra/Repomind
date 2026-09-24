@@ -24,8 +24,7 @@ Then open Windows PowerShell at the safe repository root:
 Set-Location "C:\path\to\Repomind"
 ```
 
-The version command should identify the wheel you installed. Candidate `2.0.0b10` remains
-unreleased until a corresponding GitHub Release exists.
+For the current beta wheel, the version command should report `RepoMind 2.0.0b10`.
 
 ## Demo flow
 

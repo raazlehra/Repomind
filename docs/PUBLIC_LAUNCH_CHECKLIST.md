@@ -20,7 +20,7 @@ All boxes are intentionally open until the launch owner verifies the gate for th
 - [ ] macOS/Linux tested if possible - Requires verification: no macOS or Linux lifecycle run is recorded.
 - [ ] Python requirements documented - Likely complete from repo evidence: `README.md`, `docs/BETA_TESTING.md`, and `pyproject.toml` require Python 3.11+.
 - [ ] Uninstall instructions - Likely complete from repo evidence: `docs/INSTALLATION.md` documents package removal, preserved repository data, and separate MCP-client registration cleanup.
-- [ ] Upgrade instructions - Likely complete from repo evidence: `docs/INSTALLATION.md` documents the exact beta-9/schema-2 to local b10-candidate compatibility scope tested on Day 7.
+- [ ] Upgrade instructions - Likely complete from repo evidence: `docs/INSTALLATION.md` documents the exact beta-9/schema-2 to b10 compatibility scope tested on Day 7.
 - [ ] v1/v2 index migration tested - Likely complete from repo evidence: `tests/test_memory.py` covers v1/beta.7-style migration to schema v2; `CHANGELOG.md` and `ARCHITECTURE.md` document the migration.
 
 ## 3. Functional
@@ -84,7 +84,7 @@ All boxes are intentionally open until the launch owner verifies the gate for th
 
 ## 8. Release
 
-- [ ] Version - Likely complete from repo evidence: source metadata declares the unreleased `2.0.0b10` candidate while the published GitHub beta remains `v2.0.0b9`; confirm the intended release version before tagging.
+- [x] Version - Verified for release: source and runtime metadata declare `2.0.0b10`.
 - [ ] Tag - Requires verification: create or verify the release tag for the exact version.
 - [ ] GitHub prerelease/release - Requires verification: publish or verify the GitHub release entry.
 - [ ] Package build - Requires verification: run `python -m build` and inspect the wheel/sdist.

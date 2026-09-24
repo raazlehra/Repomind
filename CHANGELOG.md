@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0b10 - Unreleased
+## 2.0.0b10 - 2026-09-24
 
 - Added bounded, change-aware `test-impact` analysis through both the CLI and MCP, with
   explicit changed-file selection, impacted areas, relevant tests, uncovered areas,
@@ -19,7 +19,7 @@
 - Added verified Windows wheel installation, MCP setup, upgrade, uninstall, and reinstall
   guidance. A tested schema-2 index created by `v2.0.0b9` remained readable after upgrading
   to the b10 candidate without reindexing; this is not a guarantee for every future schema.
-- Corrected candidate packaging/version metadata and included the complete Apache License
+- Corrected packaging/version metadata and included the complete Apache License
   2.0 terms in source and distribution artifacts.
 
 ## 2.0.0-beta.9 - 2026-08-31

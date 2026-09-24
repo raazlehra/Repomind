@@ -1,8 +1,7 @@
 # Installation and Lifecycle
 
 RepoMind is distributed through [GitHub Releases](https://github.com/raazlehra/Repomind/releases).
-The currently published beta is `v2.0.0b9`. The source tree may contain a newer candidate;
-`2.0.0b10` is currently an unreleased candidate and has no public release asset yet.
+The current published beta is `v2.0.0b10`.
 
 > [!WARNING]
 > Do not run plain `pip install repomind`. The `repomind` name on PyPI currently resolves to
@@ -69,16 +68,15 @@ python -m venv .venv
 python -m pip install -e ".[dev]"
 ```
 
-To validate the current unreleased candidate locally, build artifacts from the candidate commit
-and install the resulting wheel in a separate disposable environment:
+To validate a local source build, build artifacts from the intended commit and install the
+resulting wheel in a separate disposable environment:
 
 ```powershell
 python -m build
 python -m pip install "dist\repomind-2.0.0b10-py3-none-any.whl"
 ```
 
-This does not publish `2.0.0b10`; do not construct a GitHub download URL until that release and
-its artifacts actually exist.
+Building locally does not publish a release. Use the GitHub Releases page for published assets.
 
 ## Initialize a repository
 
@@ -108,7 +106,7 @@ repomind doctor "C:\path\to\repository"
 ```
 
 Day 7 specifically tested upgrading a disposable schema-2 index created by published beta 9 to
-the local `2.0.0b10` candidate. In that test, the existing index opened without reindexing,
+`2.0.0b10`. In that test, the existing index opened without reindexing,
 repository identity remained intact, and existing memory data remained available. This result is
 limited to that tested beta-9/schema-2 path; it is not a blanket compatibility promise for every
 older or future index format. If `doctor` or `status` requests a rebuild for another schema, follow
@@ -141,7 +139,7 @@ repomind status -C "C:\path\to\repository"
 repomind context "trace the authentication flow" -C "C:\path\to\repository"
 ```
 
-The Day 7 disposable lifecycle confirmed that a preserved index remained usable after candidate
+The Day 7 disposable lifecycle confirmed that a preserved index remained usable after package
 uninstall and reinstall.
 
 ## Next step: agent integration
