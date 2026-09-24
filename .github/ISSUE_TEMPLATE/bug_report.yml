@@ -12,7 +12,7 @@ body:
     id: repomind_version
     attributes:
       label: RepoMind version
-      placeholder: "2.0.0b8"
+      placeholder: "Paste the output of: repomind --version"
     validations:
       required: true
   - type: dropdown

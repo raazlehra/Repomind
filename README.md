@@ -1,6 +1,6 @@
 # RepoMind
 
-Local-first repository intelligence for AI coding agents.
+Local-first repository intelligence for developers and AI coding agents.
 
 Index once. Understand everywhere.
 
@@ -13,6 +13,7 @@ Key capabilities:
 - Explainable retrieval
 - Repository memory
 - Caller, dependency, and impact analysis
+- Bounded, change-aware test-impact analysis
 - MCP support
 - No cloud upload required
 
@@ -20,7 +21,7 @@ RepoMind runs locally. It does not execute repository source, upload code, call 
 
 ## What RepoMind Is
 
-RepoMind is a portable repository intelligence layer for AI coding agents. It indexes files, symbols, imports, routes, dependency edges, architecture facts, Git working-tree state, and evidence-backed repository memory into a local SQLite index under `.repomind/`.
+RepoMind is a portable repository intelligence layer for developers and AI coding agents. It indexes files, symbols, imports, routes, dependency edges, architecture facts, Git working-tree state, and evidence-backed repository memory into a local SQLite index under `.repomind/`.
 
 Agents can query RepoMind through the CLI or MCP to get a compact ContextPack for a task, inspect dependency and caller relationships, retrieve bounded snippets, and reuse durable repository facts with provenance.
 
@@ -193,6 +194,9 @@ Test-impact is strictly analysis-only. The CLI and MCP return recommended comman
 argument arrays, and repository-relative working directories as data; RepoMind never runs
 those commands or repository test code. Codex, CI, or a developer must separately review,
 approve, and execute recommendations in an appropriately trusted environment.
+
+See the [sanitized sample test-impact report](docs/SAMPLE_TEST_IMPACT_REPORT.md) for a
+reproducible synthetic example and guidance on interpreting evidence and limits.
 
 ## Automatic Freshness
 
@@ -381,6 +385,11 @@ See [SECURITY.md](SECURITY.md).
 
 - RepoMind is not a coding agent and does not edit code.
 - Static analysis can miss dynamic language behavior, reflection, runtime-generated imports, dependency injection, and framework magic.
+- Test-impact recommendations are evidence-based suggestions and are not guaranteed to find every relevant test or risk.
+- Confidence labels are heuristic summaries of available static evidence, not calibrated probabilities.
+- Truncated collections and lower-bound counts must be interpreted using the report's completeness and truncation metadata.
+- RepoMind does not provide security certification or replace a dedicated security review.
+- Agent-generated conclusions based on RepoMind output still require developer review.
 - JavaScript and TypeScript extraction is deterministic structural extraction, not a full compiler frontend.
 - Fallback-language extraction is intentionally shallow.
 - Architecture detection reports manifest/config evidence and can be incomplete.
@@ -389,6 +398,10 @@ See [SECURITY.md](SECURITY.md).
 - Approximate token counts are not provider tokenizer or billing values.
 - RepoMind does not guarantee AI credit savings, token savings, or performance outcomes across arbitrary repositories.
 - `.repomind/` indexes are local caches and should not normally be committed.
+
+## License
+
+RepoMind is licensed under the [Apache License 2.0](LICENSE).
 
 ## Roadmap
 

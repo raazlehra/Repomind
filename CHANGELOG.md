@@ -1,11 +1,26 @@
 # Changelog
 
-## 2.0.0-beta.10 - Unreleased
+## 2.0.0b10 - Unreleased
 
-- Added bounded, change-aware `test-impact` analysis with per-test framework ownership,
-  migration and cross-stack route/API evidence, deterministic commands, and visible truncation metadata.
-- Kept test-impact strictly analysis-only across CLI and MCP: it returns bounded command
-  recommendations as data and never executes repository code.
+- Added bounded, change-aware `test-impact` analysis through both the CLI and MCP, with
+  explicit changed-file selection, impacted areas, relevant tests, uncovered areas,
+  command recommendations, evidence, confidence, and completeness metadata.
+- Bounded Git changed-file discovery and evidence collection during processing, while
+  preserving deterministic priority-aware selection when stronger evidence appears later.
+- Added deterministic test ownership and command selection for Python and JavaScript/
+  TypeScript projects, including migration, route, API, and cross-stack evidence.
+- Hardened Git parsing, path validation, large-change handling, timeouts, diagnostics,
+  unusual filenames, renames, stream chunk boundaries, and adversarial evidence budgets.
+- Kept test-impact strictly analysis-only: RepoMind returns bounded command recommendations
+  as data and never executes repository code or tests.
+- Validated indexing, refresh, retrieval, and test-impact behavior against a disposable
+  copy of a real-world full-stack repository without distributing its source or private data,
+  and documented remaining static-analysis limitations.
+- Added verified Windows wheel installation, MCP setup, upgrade, uninstall, and reinstall
+  guidance. A tested schema-2 index created by `v2.0.0b9` remained readable after upgrading
+  to the b10 candidate without reindexing; this is not a guarantee for every future schema.
+- Corrected candidate packaging/version metadata and included the complete Apache License
+  2.0 terms in source and distribution artifacts.
 
 ## 2.0.0-beta.9 - 2026-08-31
 

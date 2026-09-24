@@ -1,11 +1,7 @@
-cd C:\Users\raazl\OneDrive\Documents\Repomind
-git status --short
+python -m pip install "C:\Downloads\repomind-<published-version>-py3-none-any.whl"
+repomind --version
+Set-Location "C:\path\to\Repomind"
 repomind init
 repomind status
-repomind context "add JSON output to repository intelligence stats"
-repomind context "add JSON output to repository intelligence stats" --explain
-repomind stats
-repomind memory list
-Set-Content -Path repomind\demo_freshness_probe.py -Value 'def demo_freshness_probe() -> str:', '    return "fresh"'
-repomind symbol demo_freshness_probe
-Remove-Item -Path repomind\demo_freshness_probe.py
+repomind context "tighten test-impact evidence limits" --explain
+repomind test-impact -C . --format markdown repomind/test_impact.py repomind/cli.py
