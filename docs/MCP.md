@@ -83,7 +83,7 @@ RepoMind's MCP protocol was validated with Codex and direct MCP clients, but Cop
 installed in the Day 6 or Day 8 environment. These commands therefore document the current
 supported Copilot interface; a RepoMind-through-Copilot functional transcript remains pending.
 
-## VS Code Copilot Chat — configuration guidance; functional validation pending
+## VS Code Copilot Chat — verified
 
 For a workspace-specific VS Code configuration, create `.vscode/mcp.json`:
 
@@ -107,8 +107,16 @@ so review the file before granting Workspace Trust or tool approval. Use **MCP: 
 start, inspect, or troubleshoot the server. See the
 [official VS Code MCP guide](https://code.visualstudio.com/docs/agent-customization/mcp-servers).
 
-The configuration shape is current official guidance. A RepoMind-through-VS Code Copilot Chat
-functional run was not performed during Days 6–8.
+The configuration shape is current official guidance. RepoMind `2.0.0b10` was functionally
+validated through VS Code Copilot Chat/Agent mode on Windows on 2026-09-25 using a workspace
+`.vscode/mcp.json` stdio server. VS Code started the server, reported the connection as `Running`,
+and discovered all 12 RepoMind MCP tools. A mixed TypeScript/Python workspace then successfully
+exercised `repomind_status`, `repomind_context` at level 1, and `repomind_test_impact`. The context
+call performed automatic freshness refresh for 21 saved changes (7 new and 14 modified) with 0
+parse errors. Test-impact returned a complete bounded result with no truncation and did not execute
+recommended commands. This validates the VS Code MCP path for server startup, tool discovery,
+status, freshness-aware context retrieval, and test-impact; it is not a claim that every MCP tool,
+VS Code version, operating system, or workspace configuration has been exhaustively tested.
 
 ## Claude Code — documented only
 
