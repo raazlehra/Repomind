@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from repomind import __version__
 from tools.evaluate_real_repos import load_spec, render_markdown, run_validation
 
 
@@ -43,7 +44,7 @@ def test_real_world_validation_outputs_sanitized_json(python_repo: Path, tmp_pat
     }
     assert result["repository"]["repository_id"] == "anon-python-app"
     assert result["repository"]["language_framework"] == "Python test fixture"
-    assert result["repository"]["repomind_version"] == "2.0.0b10"
+    assert result["repository"]["repomind_version"] == __version__
     assert result["repository"]["indexed_file_count"] > 0
     assert result["repository"]["indexed_text_bytes"] > 0
     assert result["repository"]["approximate_repository_tokens"] > 0
