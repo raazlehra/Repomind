@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.0.0b11 - Unreleased
+
+- Hardened index/cache path containment, rejected reparse points and hardlinked SQLite
+  sidecars, and preserved normal WAL operation on trusted local paths.
+- Isolated expected parser recursion/resource failures without retaining incomplete results.
+- Disabled configured Git hooks, fsmonitor hooks, external diff, and textconv execution during
+  passive repository inspection.
+- Propagated CLI failures through `python -m repomind` process exit codes.
+- Verified the authoritative b10 wheel-to-b11 candidate lifecycle, including schema/manual-memory
+  preservation across upgrade and package reinstall plus documented forced-rebuild behavior.
+- Added least-privilege Linux quality/test CI and Windows installed-wheel smoke coverage.
+- Added candidate artifact-content verification and installed-wheel CLI/MCP smoke checks.
+- Clarified authoritative GitHub Release installation, checksum verification, MCP client data
+  boundaries, sensitive local metadata, rebuild behavior, and private vulnerability reporting.
+
 ## 2.0.0b10 - 2026-09-24
 
 - Added bounded, change-aware `test-impact` analysis through both the CLI and MCP, with
