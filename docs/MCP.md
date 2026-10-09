@@ -234,12 +234,10 @@ Repository Memory is freshness-aware. Automatic facts store evidence hashes deri
 
 ## Security Model
 
-RepoMind MCP remains local-first:
+RepoMind MCP remains local-first at the RepoMind process boundary:
 
-- no network requests by RepoMind tools
-- no telemetry
-- no cloud upload
-- no external AI APIs
+- no network requests by RepoMind tools during normal analysis
+- no telemetry, cloud upload, or external AI API path in RepoMind itself
 - no repository source execution by test-impact; commands and argument arrays are returned as data only
 - no `eval` or `exec`
 - no shell execution for query tools
@@ -248,6 +246,10 @@ RepoMind MCP remains local-first:
 Every tool operates on an explicit repository path. Source snippets are served only for indexed symbols or indexed file paths under that repository. The MCP adapter should not be treated as a generic filesystem server.
 
 Repository contents are untrusted. RepoMind performs static analysis and returns metadata, relationships, bounded snippets, and evidence-backed memory records. Memory records store paths and symbols as evidence, not large source payloads.
+
+The MCP client or coding agent is a separate trust boundary. It may send metadata, command data,
+or snippets requested from RepoMind to its configured provider. RepoMind cannot control that
+client-side behavior; review the client's configuration and provider privacy terms.
 
 ## Error Behavior
 

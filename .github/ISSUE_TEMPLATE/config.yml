@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/raazlehra/Repomind/security/advisories/new
+    about: Send vulnerability details privately; do not put secrets or private source in a public issue.
   - name: Private beta testing guide
     url: https://github.com/raazlehra/Repomind/blob/main/docs/BETA_TESTING.md
     about: Read the beta testing workflow and privacy guidance before filing feedback.

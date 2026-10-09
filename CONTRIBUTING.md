@@ -25,12 +25,12 @@ python -m pip install -e '.[dev]'
 
 ## Checks
 
-Run all gates before submitting:
+Run all gates from the repository root containing `pyproject.toml` before submitting:
 
 ```bash
 python -m pytest
-ruff check .
-mypy repomind
+python -m ruff check repomind tests tools benchmarks scripts
+python -m mypy repomind
 python -m build
 python -m repomind --version
 ```

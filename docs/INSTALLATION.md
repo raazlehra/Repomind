@@ -10,31 +10,54 @@ The current published beta is `v2.0.0b10`.
 
 ## Install a published release on Windows
 
-Download the `.whl` asset for the release you intend to use. Then create an isolated virtual
-environment and install that exact file. This PowerShell flow is the primary verified path:
+The GitHub Release wheel is authoritative. For example, the published b10 wheel is:
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install "C:\Downloads\repomind-<version>-py3-none-any.whl"
-
-repomind --version
-repomind --help
-python -m repomind --help
+```text
+https://github.com/raazlehra/Repomind/releases/download/v2.0.0b10/repomind-2.0.0b10-py3-none-any.whl
 ```
 
-Replace the example path and filename with the asset you downloaded. Keeping RepoMind in a
-dedicated virtual environment makes its Python interpreter easy to identify when configuring
-an MCP client.
+Its release SHA-256 is
+`8ac3533c831a9aae1032081c3a7083761d8e3aed09a69f6cc92293cf6405f9b1`.
+Confirm the version and hash on the release page for every later release; do not reuse the b10
+value for another artifact.
 
-The package requires Python 3.11 or newer. Project metadata currently declares classifiers for
-Python 3.11 through 3.13. The Day 7 lifecycle run also completed on Python 3.14.7, but that is an
-observed compatibility result, not a declaration of formal Python 3.14 support.
+Download the exact wheel, verify it, and install it into a dedicated environment. PowerShell:
 
-Day 7 exercised newly created disposable virtual environments on Windows, including repository
-paths containing spaces, an `E:` drive repository, and installed-package execution outside the
-source checkout. That run was process-isolated; it was not a fresh Windows VM or user profile.
-Linux and macOS lifecycle validation is still pending.
+```powershell
+$Wheel = (Resolve-Path "C:\Downloads\repomind-2.0.0b10-py3-none-any.whl").Path
+$Expected = "8ac3533c831a9aae1032081c3a7083761d8e3aed09a69f6cc92293cf6405f9b1"
+$Actual = (Get-FileHash -Algorithm SHA256 $Wheel).Hash.ToLowerInvariant()
+if ($Actual -ne $Expected) { throw "RepoMind wheel checksum mismatch" }
+
+py -3.12 -m venv "C:\Tools\RepoMind"
+& "C:\Tools\RepoMind\Scripts\python.exe" -m pip install $Wheel
+& "C:\Tools\RepoMind\Scripts\python.exe" -m repomind --version
+& "C:\Tools\RepoMind\Scripts\repomind.exe" --version
+```
+
+The explicit interpreter form does not depend on activation or an unrelated `repomind` command
+elsewhere on `PATH`. The installed distribution metadata name and CLI command are both
+`repomind`, but the name alone does not prove that the wheel came from this project.
+
+On Linux or another POSIX system with `sha256sum`:
+
+```bash
+curl -fL -o repomind-2.0.0b10-py3-none-any.whl \
+  https://github.com/raazlehra/Repomind/releases/download/v2.0.0b10/repomind-2.0.0b10-py3-none-any.whl
+printf '%s  %s\n' \
+  '8ac3533c831a9aae1032081c3a7083761d8e3aed09a69f6cc92293cf6405f9b1' \
+  'repomind-2.0.0b10-py3-none-any.whl' | sha256sum -c -
+python3 -m venv "$HOME/.local/share/repomind-venv"
+"$HOME/.local/share/repomind-venv/bin/python" -m pip install ./repomind-2.0.0b10-py3-none-any.whl
+"$HOME/.local/share/repomind-venv/bin/python" -m repomind --version
+```
+
+On macOS, compare `shasum -a 256 <wheel>` with the GitHub Release hash before installing.
+
+The package requires Python 3.11 or newer and currently declares support classifiers for Python
+3.11 through 3.13. Windows installed-wheel release checks use paths containing spaces and run
+outside the source checkout. Linux installed-wheel behavior is a CI gate; a release must not
+claim it passed until the corresponding GitHub Actions run is green.
 
 ## Optional dependencies
 
@@ -43,8 +66,8 @@ in the wheel metadata and can be requested from the local wheel without consulti
 RepoMind project itself:
 
 ```powershell
-python -m pip install "C:\Downloads\repomind-<version>-py3-none-any.whl[watch]"
-python -m pip install "C:\Downloads\repomind-<version>-py3-none-any.whl[treesitter]"
+& "C:\Tools\RepoMind\Scripts\python.exe" -m pip install "C:\Downloads\repomind-<version>-py3-none-any.whl[watch]"
+& "C:\Tools\RepoMind\Scripts\python.exe" -m pip install "C:\Downloads\repomind-<version>-py3-none-any.whl[treesitter]"
 ```
 
 - Without `watchdog`, event-driven `repomind watch` is unavailable. Normal indexing, explicit
@@ -73,7 +96,7 @@ resulting wheel in a separate disposable environment:
 
 ```powershell
 python -m build
-python -m pip install "dist\repomind-2.0.0b10-py3-none-any.whl"
+python -m pip install "dist\repomind-2.0.0b11-py3-none-any.whl"
 ```
 
 Building locally does not publish a release. Use the GitHub Releases page for published assets.
@@ -94,30 +117,34 @@ repomind context "trace the authentication flow"
 `init` creates repository-local `.repomind` index data. It does not mean "install RepoMind."
 Treat `.repomind/` as local metadata and do not normally commit it.
 
-## Upgrade from beta 9
+## Upgrade an existing b10 index to a candidate
 
-Install the newer wheel into the same virtual environment:
+Back up important repository data, then install the candidate wheel into the same dedicated
+environment using its exact path:
 
 ```powershell
-python -m pip install --upgrade "C:\Downloads\repomind-<new-version>-py3-none-any.whl"
-repomind --version
-repomind status -C "C:\path\to\repository"
-repomind doctor "C:\path\to\repository"
+& "C:\Tools\RepoMind\Scripts\python.exe" -m pip install --upgrade "C:\Downloads\repomind-<new-version>-py3-none-any.whl"
+& "C:\Tools\RepoMind\Scripts\python.exe" -m repomind --version
+& "C:\Tools\RepoMind\Scripts\python.exe" -m repomind status -C "C:\path\to\repository"
+& "C:\Tools\RepoMind\Scripts\python.exe" -m repomind doctor "C:\path\to\repository"
 ```
 
-Day 7 specifically tested upgrading a disposable schema-2 index created by published beta 9 to
-`2.0.0b10`. In that test, the existing index opened without reindexing,
-repository identity remained intact, and existing memory data remained available. This result is
-limited to that tested beta-9/schema-2 path; it is not a blanket compatibility promise for every
-older or future index format. If `doctor` or `status` requests a rebuild for another schema, follow
-that explicit diagnostic instead of assuming compatibility.
+Local Windows validation on 2026-10-10 installed the authoritative b10 wheel after matching its
+published SHA-256, created a schema-2 index and manual memory, then upgraded to the exact local
+`2.0.0b11` candidate wheel. Repository identity, creation metadata, schema, and manual memory were
+preserved; doctor, context, and test-impact remained healthy. Uninstall/reinstall also preserved
+the index, configuration, and manual memory. A separate disposable forced rebuild preserved
+configuration and removed database-only manual memory as documented.
+
+This is evidence for that exact b10-to-b11 candidate path on Windows/Python 3.12.14, not a blanket
+compatibility promise. Linux evidence remains pending the actual GitHub Actions run.
 
 ## Uninstall and reinstall
 
 Uninstall the Python package through the environment's interpreter:
 
 ```powershell
-python -m pip uninstall repomind
+& "C:\Tools\RepoMind\Scripts\python.exe" -m pip uninstall repomind
 ```
 
 Package uninstall removes the installed module and command from that environment. It does not
@@ -134,13 +161,17 @@ client's own commands only when desired.
 Reinstall the same way as the original release installation:
 
 ```powershell
-python -m pip install "C:\Downloads\repomind-<version>-py3-none-any.whl"
-repomind status -C "C:\path\to\repository"
-repomind context "trace the authentication flow" -C "C:\path\to\repository"
+& "C:\Tools\RepoMind\Scripts\python.exe" -m pip install "C:\Downloads\repomind-<version>-py3-none-any.whl"
+& "C:\Tools\RepoMind\Scripts\python.exe" -m repomind status -C "C:\path\to\repository"
+& "C:\Tools\RepoMind\Scripts\python.exe" -m repomind context "trace the authentication flow" -C "C:\path\to\repository"
 ```
 
 The Day 7 disposable lifecycle confirmed that a preserved index remained usable after package
 uninstall and reinstall.
+
+`repomind init --force` is different from package reinstall: it deletes the SQLite index files
+and rebuilds them from source. Manual memory stored only in that database is removed. Export or
+record manual facts before forcing a rebuild when they must be preserved.
 
 ## Next step: agent integration
 

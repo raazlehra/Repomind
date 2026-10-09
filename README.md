@@ -17,7 +17,10 @@ Key capabilities:
 - MCP support
 - No cloud upload required
 
-RepoMind runs locally. It does not execute repository source, upload code, call external AI APIs, or send telemetry.
+RepoMind's core analysis runs locally. During normal analysis, RepoMind itself does not execute
+repository source, upload code, call external AI APIs, or send telemetry. An MCP client or coding
+agent can separately transmit requested RepoMind metadata or snippets to its configured provider;
+that client and provider remain separate trust boundaries.
 
 ## What RepoMind Is
 
@@ -55,9 +58,12 @@ repomind --version
 repomind --help
 ```
 
-Do **not** use plain `pip install repomind`: that name on PyPI currently resolves to a
-different project. The current RepoMind beta is `v2.0.0b10`; install its wheel from the
-project's GitHub Releases page.
+Do **not** use plain `pip install repomind`: that distribution name on PyPI currently resolves
+to a different project. The current published RepoMind beta is `v2.0.0b10`; install its exact
+wheel from the project's GitHub Releases page and verify its published SHA-256. The source tree
+may contain a newer unreleased candidate. The installed distribution identity and the
+`repomind` CLI command name are related but not interchangeable proof that the correct project
+was installed.
 
 For contributors working from a trusted checkout:
 
@@ -71,8 +77,9 @@ artifact instead of the unrelated PyPI project. Without `watchdog`, `repomind wa
 unavailable, but retrieval-time freshness checks still work. Without compatible Tree-sitter
 grammars, built-in deterministic JavaScript and TypeScript parsers remain active.
 
-See [Installation and lifecycle](docs/INSTALLATION.md) for the verified Windows flow,
-optional-extra syntax, local builds, beta-9 upgrade behavior, and uninstall/reinstall details.
+See [Installation and lifecycle](docs/INSTALLATION.md) for exact Windows and POSIX commands,
+checksum verification, optional-extra syntax, local builds, upgrade behavior, and
+uninstall/reinstall details.
 
 ## Quick Start
 
@@ -370,14 +377,19 @@ Current beta.8 validation reported 12/12 expected benchmark files retrieved with
 RepoMind is local-first by default:
 
 - no repository source execution by test-impact; it returns command recommendations as data only;
-- no network requests for normal indexing or retrieval;
-- no cloud uploads;
-- no telemetry;
-- no external AI APIs.
+- no network requests by RepoMind core during normal indexing or retrieval;
+- no cloud uploads, telemetry, or external AI API path in RepoMind core.
 
-The SQLite index may contain repository paths, symbol names, signatures, short docstrings, dependency evidence, architecture facts, Git state, and repository memory metadata. Treat `.repomind/` as local repository metadata and do not normally commit it.
+MCP clients and coding agents are separate applications. They may send metadata, command data,
+or snippets requested from RepoMind to their configured model/provider. Review the client's
+configuration and provider privacy terms before exposing a sensitive repository.
 
-Repository Memory follows the same privacy model. Automatic memory rejects facts without evidence and stores paths, optional symbols, and hashes rather than large source payloads or secret values. Manual memory source paths are checked for secret-like names.
+The SQLite index may contain repository paths, symbol names, signatures, short docstrings,
+dependency evidence, architecture facts, Git state, and repository memory metadata. Treat
+`.repomind/` as potentially sensitive local metadata and do not normally commit it.
+
+Manual memory is user-provided content and can itself contain sensitive information; secret-like
+source-path checks do not sanitize its value.
 
 See [SECURITY.md](SECURITY.md).
 
@@ -423,7 +435,7 @@ For development:
 
 ```bash
 python -m pytest
-python -m ruff check .
+python -m ruff check repomind tests tools benchmarks scripts
 python -m mypy repomind
 python -m build
 ```
