@@ -13,6 +13,17 @@ RepoMind does not:
 - follow repository symlinks during scanning.
 
 Git inspection uses fixed executable arguments with `shell=False` and a timeout.
+Both ordinary inspection and bounded test-impact discovery disable Git fsmonitor hooks.
+Diff inspection disables external diff and textconv commands. Inherited `GIT_*`
+overrides and global/system Git configuration are excluded from these subprocesses;
+optional Git writes and interactive prompts are disabled. Inspection assumes a trusted
+Git executable on PATH and a repository the operator is authorized to inspect.
+
+Expected parser recursion and memory failures are recorded as per-file parse errors;
+an interrupted traversal does not retain incomplete symbols or relationships. This
+does not provide a process sandbox, hard CPU/memory limit, or protection against
+OS-level termination. Unexpected programming and database errors are not silently
+converted into successful indexes.
 
 ## Default exclusions
 
@@ -70,6 +81,13 @@ repomind init --force
 ```
 
 `--force` removes RepoMind's SQLite database files only, not arbitrary repository files.
+Before opening or rebuilding, RepoMind checks `.repomind`, the database, and its
+WAL, SHM and rollback-journal paths. Symlinks, Windows reparse points, hardlinked
+database files and special files are rejected. A rebuild checks all paths before
+deleting any cache file. These are preflight checks: they do not prevent an actor
+with concurrent filesystem write access from replacing entries after validation.
+Keep repository/cache directories under trusted local access controls. Native
+Windows junction behavior must be verified during platform release checks.
 
 ## Repository Memory privacy
 

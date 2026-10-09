@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import stat
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -14,6 +15,35 @@ from repomind.models import ArchitectureFact, MemoryRecord, ParseResult, Scanned
 SCHEMA_VERSION = 2
 INDEX_DIRECTORY = ".repomind"
 INDEX_FILENAME = "index.sqlite3"
+INDEX_SUFFIXES = ("", "-wal", "-shm", "-journal")
+
+
+def validate_index_paths(root: Path) -> Path:
+    """Reject redirected cache entries before SQLite access or destructive rebuild.
+
+    This is a preflight check, not a sandbox against concurrent filesystem mutation.
+    """
+    directory = root.resolve() / INDEX_DIRECTORY
+    paths = [directory, *(directory / f"{INDEX_FILENAME}{s}" for s in INDEX_SUFFIXES)]
+    for path in paths:
+        try:
+            metadata = path.lstat()
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            raise RepoMindError(f"Unsafe index path: unable to inspect {path.name}: {exc}") from exc
+        reparse = getattr(metadata, "st_file_attributes", 0) & getattr(
+            stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400
+        )
+        if stat.S_ISLNK(metadata.st_mode) or reparse:
+            raise RepoMindError(f"Unsafe index path: {path.name} is a link or reparse point")
+        if path == directory:
+            if not stat.S_ISDIR(metadata.st_mode):
+                raise RepoMindError("Unsafe index path: .repomind must be a directory")
+        elif not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink > 1:
+            # SQLite can unlink a sidecar concurrently with this lstat (nlink=0).
+            raise RepoMindError(f"Unsafe index path: {path.name} must not be hardlinked or special")
+    return directory / INDEX_FILENAME
 
 _MEMORY_SCHEMA = """
 CREATE TABLE IF NOT EXISTS memory (
@@ -152,11 +182,12 @@ class IndexDatabase:
     def __init__(self, root: Path, create: bool = False) -> None:
         self.root = root.resolve()
         self.directory = self.root / INDEX_DIRECTORY
-        self.path = self.directory / INDEX_FILENAME
+        self.path = validate_index_paths(self.root)
         if not create and not self.path.is_file():
             raise NotIndexedError()
         if create:
             self.directory.mkdir(parents=True, exist_ok=True)
+        validate_index_paths(self.root)
         try:
             self.connection = sqlite3.connect(self.path, timeout=30)
         except sqlite3.Error as exc:

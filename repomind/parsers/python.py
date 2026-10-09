@@ -40,12 +40,19 @@ class PythonParser:
             source = source[1:]
         try:
             tree = ast.parse(source, filename=relative_path, type_comments=True)
-        except (SyntaxError, ValueError) as exc:
+        except (SyntaxError, ValueError, RecursionError, MemoryError) as exc:
             result.parse_error = f"{type(exc).__name__}: {exc}"
             result.summary = "Python source (parse error; indexed as file only)"
             return result
         visitor = _PythonVisitor(result)
-        visitor.visit(tree)
+        try:
+            visitor.visit(tree)
+        except (RecursionError, MemoryError) as exc:
+            # Do not retain incomplete symbols/edges from an interrupted traversal.
+            return ParseResult(
+                parse_error=f"{type(exc).__name__}: {exc}",
+                summary="Python source (parse error; indexed as file only)",
+            )
         counts: dict[str, int] = {}
         for symbol in result.symbols:
             counts[symbol.kind] = counts.get(symbol.kind, 0) + 1

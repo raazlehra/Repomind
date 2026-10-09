@@ -14,7 +14,7 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any, Literal
 
 from repomind.database import IndexDatabase
-from repomind.git import _run_git
+from repomind.git import _run_git, passive_git_command, passive_git_environment
 from repomind.scanner import classify_file, is_executable_test_path
 
 TEST_IMPACT_SCHEMA_VERSION = "repomind.test-impact.v1"
@@ -975,7 +975,8 @@ def _bounded_git_changes(
     stderr_state: dict[str, int | bool] = {"retained": 0, "exceeded": False}
     try:
         process = subprocess.Popen(
-            ["git", "-C", str(root), *args],
+            passive_git_command(root, args),
+            env=passive_git_environment(),
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

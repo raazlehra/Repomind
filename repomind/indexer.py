@@ -9,7 +9,14 @@ from pathlib import Path
 
 from repomind.architecture import detect_architecture
 from repomind.config import Config
-from repomind.database import INDEX_DIRECTORY, INDEX_FILENAME, IndexDatabase, utc_now
+from repomind.database import (
+    INDEX_DIRECTORY,
+    INDEX_FILENAME,
+    INDEX_SUFFIXES,
+    IndexDatabase,
+    utc_now,
+    validate_index_paths,
+)
 from repomind.errors import RepoMindError
 from repomind.git import inspect_git
 from repomind.graph import rebuild_dependency_graph
@@ -50,11 +57,12 @@ class Indexer:
     def initialize(
         self, force: bool = False, progress: ProgressCallback | None = None
     ) -> IndexResult:
-        index_path = self.root / INDEX_DIRECTORY / INDEX_FILENAME
+        index_path = validate_index_paths(self.root)
         if index_path.exists() and not force:
             raise RepoMindError("Repository is already indexed. Run: repomind refresh")
         if force:
-            for suffix in ("", "-wal", "-shm"):
+            for suffix in INDEX_SUFFIXES:
+                validate_index_paths(self.root)
                 candidate = Path(str(index_path) + suffix)
                 if candidate.exists():
                     candidate.unlink()

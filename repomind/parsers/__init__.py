@@ -53,7 +53,13 @@ class ParserRegistry:
         except OSError as exc:
             return ParseResult(parse_error=f"Unable to read: {exc}")
         parser = self._by_language.get(language, self._plain)
-        return parser.parse(path, relative_path, source)
+        try:
+            return parser.parse(path, relative_path, source)
+        except (RecursionError, MemoryError) as exc:
+            return ParseResult(
+                parse_error=f"{type(exc).__name__}: {exc}",
+                summary="Source (parser resource error; indexed as file only)",
+            )
 
 
 __all__ = ["ParserRegistry", "StructuralParser"]
