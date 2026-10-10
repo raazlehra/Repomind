@@ -54,10 +54,11 @@ python3 -m venv "$HOME/.local/share/repomind-venv"
 
 On macOS, compare `shasum -a 256 <wheel>` with the GitHub Release hash before installing.
 
-The package requires Python 3.11 or newer and currently declares support classifiers for Python
-3.11 through 3.13. Windows installed-wheel release checks use paths containing spaces and run
-outside the source checkout. Linux installed-wheel behavior is a CI gate; a release must not
-claim it passed until the corresponding GitHub Actions run is green.
+RepoMind requires Python 3.11+. The current b11 release matrix explicitly validates Python
+3.11–3.13. Other Python versions are not claimed as release-tested unless listed in the release
+notes. Windows installed-wheel release checks use paths containing spaces and run outside the
+source checkout. Linux installed-wheel behavior is a CI gate; a release must not claim it passed
+until the corresponding GitHub Actions run is green.
 
 ## Optional dependencies
 

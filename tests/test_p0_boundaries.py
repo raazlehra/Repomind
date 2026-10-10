@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import stat
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -22,6 +23,17 @@ def _symlink(link: Path, target: Path, *, directory: bool = False) -> None:
         link.symlink_to(target, target_is_directory=directory)
     except OSError as exc:
         pytest.skip(f"Symlink creation unavailable: {exc}")
+
+def _git_shell_path(path: Path) -> str:
+    value = path.resolve().as_posix()
+    if os.name == "nt" and len(value) > 2 and value[1] == ":":
+        return f"/{value[0].lower()}{value[2:]}"
+    return value
+
+
+def _python_command(script: Path) -> str:
+    return f'"{Path(sys.executable).as_posix()}" "{script.as_posix()}"'
+
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows junction behavior")
@@ -222,7 +234,6 @@ def test_indexer_does_not_hide_unexpected_database_bug(
         Indexer(tmp_path).initialize()
 
 
-@pytest.mark.skipif(os.name == "nt", reason="POSIX marker hook; Windows smoke is separate")
 @pytest.mark.parametrize("entrypoint", ["inspect", "bounded"])
 def test_passive_git_does_not_execute_fsmonitor(tmp_path: Path, entrypoint: str) -> None:
     root = tmp_path / "repo"
@@ -230,10 +241,16 @@ def test_passive_git_does_not_execute_fsmonitor(tmp_path: Path, entrypoint: str)
     subprocess.run(["git", "init", "-q", str(root)], check=True)
     marker = tmp_path / "marker"
     hook = tmp_path / "hook"
-    hook.write_text(f"#!/bin/sh\nprintf invoked > '{marker}'\n")
+    hook.write_text(
+        f"#!/bin/sh\nprintf invoked > '{_git_shell_path(marker)}'\n", encoding="utf-8"
+    )
     hook.chmod(0o700)
-    subprocess.run(["git", "-C", str(root), "config", "core.fsmonitor", str(hook)], check=True)
+    subprocess.run(["git", "-C", str(root), "config", "core.fsmonitor", hook.resolve().as_posix()], check=True)
     (root / "file.py").write_text("x = 1\n")
+    subprocess.run(["git", "-C", str(root), "status", "--short"], check=True)
+    assert marker.exists()
+    marker.unlink()
+
     if entrypoint == "inspect":
         info = inspect_git(root)
         assert info.available
@@ -246,7 +263,164 @@ def test_passive_git_does_not_execute_fsmonitor(tmp_path: Path, entrypoint: str)
     assert not marker.exists()
 
 
-@pytest.mark.skipif(os.name == "nt", reason="POSIX executable marker")
+def test_passive_git_preserves_benign_config_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    root = tmp_path / "repo"
+    root.mkdir()
+    global_config = home / ".gitconfig"
+    global_config.write_text(
+        "[core]\n"
+        "\tautocrlf = true\n"
+        "\tprecomposeunicode = true\n"
+        "[safe]\n"
+        f"\tdirectory = {root.as_posix()}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / "xdg"))
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    subprocess.run(["git", "-C", str(root), "config", "core.ignorecase", "false"], check=True)
+    subprocess.run(["git", "-C", str(root), "config", "core.filemode", "false"], check=True)
+
+    for key in (
+        "core.autocrlf", "core.ignorecase", "core.filemode",
+        "core.precomposeunicode", "safe.directory",
+    ):
+        normal = subprocess.run(
+            ["git", "-C", str(root), "config", "--get-all", key],
+            check=True, capture_output=True, text=True,
+        )
+        passive = _run_git(root, ["config", "--get-all", key])
+        assert passive.returncode == 0
+        assert passive.stdout == normal.stdout
+
+
+@pytest.mark.parametrize("entrypoint", ["inspect", "bounded"])
+def test_passive_git_does_not_execute_clean_filter(
+    tmp_path: Path, entrypoint: str
+) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    marker = tmp_path / "filter-marker"
+    script = tmp_path / "filter.py"
+    script.write_text(
+        "import pathlib, sys\n"
+        f"pathlib.Path({str(marker)!r}).write_text('invoked')\n"
+        "sys.stdout.buffer.write(sys.stdin.buffer.read())\n",
+        encoding="utf-8",
+    )
+    source = root / "data.txt"
+    source.write_text("one\n", encoding="utf-8")
+    (root / ".gitattributes").write_text("*.txt filter=probe\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    subprocess.run(["git", "-C", str(root), "config", "user.email", "tests@example.invalid"], check=True)
+    subprocess.run(["git", "-C", str(root), "config", "user.name", "RepoMind Tests"], check=True)
+    subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+    subprocess.run(["git", "-C", str(root), "commit", "-qm", "fixture"], check=True)
+    command = f'"{Path(sys.executable).as_posix()}" "{script.as_posix()}"'
+    subprocess.run(
+        ["git", "-C", str(root), "config", "filter.probe.clean", command], check=True
+    )
+    source.write_text("two\n", encoding="utf-8")
+
+    subprocess.run(["git", "-C", str(root), "status", "--short"], check=True)
+    assert marker.exists()
+    marker.unlink()
+
+    if entrypoint == "inspect":
+        info = inspect_git(root)
+        assert info.available
+        assert "data.txt" in info.changed_files
+    else:
+        limits = ImpactLimits()
+        result = _bounded_git_changes(
+            root, ["status", "--porcelain=v1", "-z"], "status",
+            limits, _AnalysisBudget.start(limits),
+        )
+        assert "data.txt" in result.paths
+    assert not marker.exists()
+
+
+def test_passive_git_does_not_execute_configured_hook(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    subprocess.run(["git", "-C", str(root), "config", "user.email", "tests@example.invalid"], check=True)
+    subprocess.run(["git", "-C", str(root), "config", "user.name", "RepoMind Tests"], check=True)
+    tracked = root / "file.py"
+    tracked.write_text("x = 1\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+    subprocess.run(["git", "-C", str(root), "commit", "-qm", "fixture"], check=True)
+    hooks = tmp_path / "hooks"
+    hooks.mkdir()
+    marker = tmp_path / "hook-marker"
+    hook = hooks / "post-index-change"
+    hook.write_text(
+        f"#!{Path(sys.executable).as_posix()}\n"
+        "from pathlib import Path\n"
+        f"Path({str(marker)!r}).write_text('invoked')\n",
+        encoding="utf-8",
+    )
+    hook.chmod(0o700)
+    subprocess.run(
+        ["git", "-C", str(root), "config", "core.hooksPath", hooks.resolve().as_posix()],
+        check=True,
+    )
+    metadata = tracked.stat()
+    os.utime(tracked, ns=(metadata.st_atime_ns, metadata.st_mtime_ns + 5_000_000_000))
+
+    subprocess.run(["git", "-C", str(root), "status", "--short"], check=True)
+    assert marker.exists()
+    marker.unlink()
+
+    assert inspect_git(root).available
+    assert not marker.exists()
+
+
+@pytest.mark.parametrize("mechanism", ["external", "textconv"])
+def test_passive_diff_does_not_execute_configured_program(
+    tmp_path: Path, mechanism: str
+) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    source = root / ("data.bin" if mechanism == "textconv" else "data.txt")
+    source.write_text("one\n", encoding="utf-8")
+    if mechanism == "textconv":
+        (root / ".gitattributes").write_text("*.bin diff=probe\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    subprocess.run(["git", "-C", str(root), "config", "user.email", "tests@example.invalid"], check=True)
+    subprocess.run(["git", "-C", str(root), "config", "user.name", "RepoMind Tests"], check=True)
+    subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+    subprocess.run(["git", "-C", str(root), "commit", "-qm", "fixture"], check=True)
+    marker = tmp_path / f"{mechanism}-marker"
+    script = tmp_path / f"{mechanism}.py"
+    script.write_text(
+        "import pathlib, sys\n"
+        f"pathlib.Path({str(marker)!r}).write_text('invoked')\n"
+        "paths = [pathlib.Path(value) for value in sys.argv[1:]]\n"
+        "source = next((path for path in reversed(paths) if path.is_file()), None)\n"
+        "sys.stdout.buffer.write(source.read_bytes() if source else b'')\n",
+        encoding="utf-8",
+    )
+    key = "diff.external" if mechanism == "external" else "diff.probe.textconv"
+    subprocess.run(
+        ["git", "-C", str(root), "config", key, _python_command(script)], check=True
+    )
+    source.write_text("two\n", encoding="utf-8")
+
+    subprocess.run(["git", "-C", str(root), "diff"], check=True, capture_output=True)
+    assert marker.exists()
+    marker.unlink()
+
+    result = _run_git(root, ["diff"])
+    assert result.returncode == 0
+    assert not marker.exists()
+
+
 def test_git_ignores_inherited_configuration_and_external_diff(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -254,23 +428,45 @@ def test_git_ignores_inherited_configuration_and_external_diff(
     root.mkdir()
     subprocess.run(["git", "init", "-q", str(root)], check=True)
     marker = tmp_path / "marker"
-    hook = tmp_path / "hook"
-    hook.write_text(f"#!/bin/sh\nprintf invoked > '{marker}'\n")
-    hook.chmod(0o700)
+    script = tmp_path / "external.py"
+    script.write_text(
+        "import pathlib\n"
+        f"pathlib.Path({str(marker)!r}).write_text('invoked')\n",
+        encoding="utf-8",
+    )
+    command = _python_command(script)
     path = root / "a.py"
     path.write_text("x = 1\n")
     subprocess.run(["git", "-C", str(root), "add", "."], check=True)
     path.write_text("x = 2\n")
     monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
-    monkeypatch.setenv("GIT_CONFIG_KEY_0", "core.fsmonitor")
-    monkeypatch.setenv("GIT_CONFIG_VALUE_0", str(hook))
-    monkeypatch.setenv("GIT_EXTERNAL_DIFF", str(hook))
-    monkeypatch.setenv("GIT_DIR", str(tmp_path / "missing-git-dir"))
-    assert "a.py" in inspect_git(root).changed_files
+    monkeypatch.setenv("GIT_CONFIG_KEY_0", "diff.external")
+    monkeypatch.setenv("GIT_CONFIG_VALUE_0", command)
+
+    subprocess.run(["git", "-C", str(root), "diff"], check=True, capture_output=True)
+    assert marker.exists()
+    marker.unlink()
+
     diff = _run_git(root, ["diff"])
     assert diff.returncode == 0
     assert "+x = 2" in diff.stdout
     assert not marker.exists()
+
+    monkeypatch.delenv("GIT_CONFIG_COUNT")
+    monkeypatch.delenv("GIT_CONFIG_KEY_0")
+    monkeypatch.delenv("GIT_CONFIG_VALUE_0")
+    monkeypatch.setenv("GIT_EXTERNAL_DIFF", command)
+    subprocess.run(["git", "-C", str(root), "diff"], check=True, capture_output=True)
+    assert marker.exists()
+    marker.unlink()
+
+    diff = _run_git(root, ["diff"])
+    assert diff.returncode == 0
+    assert "+x = 2" in diff.stdout
+    assert not marker.exists()
+
+    monkeypatch.setenv("GIT_DIR", str(tmp_path / "missing-git-dir"))
+    assert "a.py" in inspect_git(root).changed_files
 
 
 @pytest.mark.parametrize("failed_call", [2, 3, 4])
@@ -300,9 +496,8 @@ def test_git_environment_strips_inherited_names_case_insensitively(
 
     environment = passive_git_environment()
 
-    controlled = {
-        "GIT_CONFIG_NOSYSTEM", "GIT_CONFIG_SYSTEM", "GIT_CONFIG_GLOBAL",
-        "GIT_OPTIONAL_LOCKS", "GIT_TERMINAL_PROMPT", "GIT_PAGER",
-    }
+    controlled = {"GIT_OPTIONAL_LOCKS", "GIT_TERMINAL_PROMPT", "GIT_PAGER"}
     inherited = {key for key in environment if key.upper().startswith("GIT_")}
     assert inherited == controlled
+    assert environment["GIT_TERMINAL_PROMPT"] == "0"
+    assert environment["GIT_OPTIONAL_LOCKS"] == "0"

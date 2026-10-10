@@ -15,10 +15,11 @@ It does not deploy, create a GitHub Release, or upload to PyPI. Its expected che
 - `CI / quality`
 - `CI / windows-wheel-smoke`
 
-The test matrix covers the Python versions declared in package classifiers. The quality job runs
-Ruff, mypy, wheel/sdist build and inspection, and an installed-wheel CLI/MCP smoke test on Linux.
-The Windows job independently builds, inspects, and installs the wheel into a disposable
-environment whose path contains spaces.
+RepoMind requires Python 3.11+. The current b11 release matrix explicitly validates Python
+3.11–3.13. Other Python versions are not claimed as release-tested unless listed in the release
+notes. The quality job runs Ruff, mypy, wheel/sdist build and inspection, and an installed-wheel
+CLI/MCP smoke test on Linux. The Windows job independently builds, inspects, and installs the
+wheel into a disposable environment whose path contains spaces.
 
 ## Local candidate gates
 

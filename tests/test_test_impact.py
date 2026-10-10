@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -248,24 +249,59 @@ def test_cli_rejects_invalid_limits(
     assert "RepoMind error:" in capsys.readouterr().err
 
 
-def test_dirty_working_tree_is_used_without_commit(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("scope", "autocrlf"),
+    [("global", "true"), ("global", "false"), ("local", "true")],
+)
+def test_dirty_working_tree_is_used_without_commit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, scope: str, autocrlf: str
+) -> None:
+    home = tmp_path / "home"
+    home.mkdir()
+    (home / ".gitconfig").write_text(
+        f"[core]\n\tautocrlf = {autocrlf}\n" if scope == "global" else "",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / "xdg"))
     repo = tmp_path / "dirty_repo"
-    _write(repo / "app" / "service.py", "def value():\n    return 1\n")
-    _write(
-        repo / "tests" / "test_service.py",
-        "from app.service import value\n\ndef test_value():\n    assert value() == 1\n",
+    source = repo / "app" / "service.py"
+    unchanged_test = repo / "tests" / "test_service.py"
+    source.parent.mkdir(parents=True)
+    unchanged_test.parent.mkdir(parents=True)
+    source.write_bytes(b"def value():\r\n    return 1\r\n")
+    unchanged_test.write_bytes(
+        b"from app.service import value\r\n\r\ndef test_value():\r\n"
+        b"    assert value() == 1\r\n"
     )
     _git(repo, "init")
+    if scope == "local":
+        _git(repo, "config", "core.autocrlf", autocrlf)
     _git(repo, "config", "user.email", "tests@example.invalid")
     _git(repo, "config", "user.name", "RepoMind Tests")
     _git(repo, "add", ".")
     _git(repo, "commit", "-m", "fixture")
     Indexer(repo).initialize()
-    _write(repo / "app" / "service.py", "def value():\n    return 2\n")
-
+    source.write_bytes(b"def value():\r\n    return 2\r\n")
+    unchanged_stat = unchanged_test.stat()
+    os.utime(
+        unchanged_test,
+        ns=(unchanged_stat.st_atime_ns, unchanged_stat.st_mtime_ns + 5_000_000_000),
+    )
     report = service_test_impact(str(repo))
 
+    normal = subprocess.run(
+        ["git", "-C", str(repo), "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+        check=True, capture_output=True, text=True,
+    )
+
     assert report["change_source"] == "working tree"
+    normal_paths = [
+        entry[3:] for entry in normal.stdout.split("\0")
+        if entry and not entry[3:].startswith(".repomind/")
+    ]
+    assert normal_paths == ["app/service.py"]
     assert [item["path"] for item in report["changed_files"]] == ["app/service.py"]
     assert _test_by_path(report, "tests/test_service.py")["confidence"] == "high"
 

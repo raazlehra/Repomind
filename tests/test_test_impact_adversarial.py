@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import io
+import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -159,11 +161,7 @@ def test_overlapping_git_caps_report_every_reached_limit(
 ) -> None:
     payload = b"?? f0.py\0?? f1.py\0?? f2.py\0"
     process = _FakeProcess(stdout=payload, stderr=b"", returncode=0)
-    monkeypatch.setattr(
-        test_impact_module.subprocess,
-        "Popen",
-        lambda *args, **kwargs: process,
-    )
+    _patch_bounded_popen(monkeypatch, process)
     limits = ImpactLimits(max_changed_files=1, max_git_output_bytes=20)
     budget = test_impact_module._AnalysisBudget.start(limits)
 
@@ -204,11 +202,7 @@ def test_git_timeout_is_reported_and_process_is_terminated(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     process = _FakeProcess(stdout=b"", stderr=b"", returncode=None)
-    monkeypatch.setattr(
-        test_impact_module.subprocess,
-        "Popen",
-        lambda *args, **kwargs: process,
-    )
+    _patch_bounded_popen(monkeypatch, process)
     monkeypatch.setattr(test_impact_module.time, "perf_counter", lambda: 100.0)
     limits = ImpactLimits(max_analysis_seconds=1)
     budget = test_impact_module._AnalysisBudget(limits, 0.0, {}, {}, {})
@@ -330,6 +324,18 @@ class _FakeProcess:
     def kill(self) -> None:
         self.terminated = True
         self.returncode = -9
+
+
+def _patch_bounded_popen(
+    monkeypatch: pytest.MonkeyPatch, process: _FakeProcess
+) -> None:
+    proxy = SimpleNamespace(
+        DEVNULL=subprocess.DEVNULL,
+        PIPE=subprocess.PIPE,
+        TimeoutExpired=subprocess.TimeoutExpired,
+        Popen=lambda *args, **kwargs: process,
+    )
+    monkeypatch.setattr(test_impact_module, "subprocess", proxy)
 
 
 def _evidence_repository(repo: Path) -> Path:

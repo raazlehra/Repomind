@@ -13,11 +13,15 @@ During normal analysis, RepoMind core does not:
 - follow repository symlinks during scanning.
 
 Git inspection uses fixed executable arguments with `shell=False` and a timeout.
-Both ordinary inspection and bounded test-impact discovery disable Git fsmonitor hooks.
-Diff inspection disables external diff and textconv commands. Inherited `GIT_*`
-overrides and global/system Git configuration are excluded from these subprocesses;
-optional Git writes and interactive prompts are disabled. Inspection assumes a trusted
-Git executable on PATH and a repository the operator is authorized to inspect.
+Normal system, global and repository configuration remains available so Git preserves
+working-tree semantics such as line-ending, filename and file-mode handling. Inherited
+`GIT_*` variables are removed. Command-level controls disable fsmonitor and configured
+hooks, and configured clean/process filters are neutralized for status and diff inspection.
+Diff inspection also uses `--no-ext-diff` and `--no-textconv`; optional Git writes and
+interactive prompts are disabled. These controls assume a trusted Git executable on PATH
+and a repository the operator is authorized to inspect. They reduce configured-program
+execution but do not eliminate races with an actor concurrently changing Git configuration
+or attributes.
 
 MCP clients and coding agents are separate trust boundaries. They may transmit metadata,
 recommended-command data, or bounded snippets requested from RepoMind to their configured
