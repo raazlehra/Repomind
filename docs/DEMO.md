@@ -24,7 +24,7 @@ Then open Windows PowerShell at the safe repository root:
 Set-Location "C:\path\to\Repomind"
 ```
 
-For the current beta wheel, the version command should report `RepoMind 2.0.0b10`.
+For the current beta wheel, the version command should report `RepoMind 2.0.0b11`.
 
 ## Demo flow
 

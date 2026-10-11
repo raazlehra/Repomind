@@ -6,6 +6,11 @@ Index once. Understand everywhere.
 
 RepoMind builds a persistent local index of a codebase, keeps it fresh as files change, and returns task-aware context that coding agents can use for focused discovery. It is not a coding agent, hosted service, embedding store, or replacement for reading source files. It helps agents find the right files, relationships, facts, and risks before they edit.
 
+**Current public beta:** [v2.0.0b11](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b11).
+This is a public prerelease/hardening beta, not stable v2.0.0. Installation requires no approval;
+download the release artifact and follow the [installation guide](docs/INSTALLATION.md). Do not use
+plain `pip install repomind`, because that PyPI distribution name belongs to another project.
+
 Key capabilities:
 
 - Automatic freshness
@@ -59,11 +64,11 @@ repomind --help
 ```
 
 Do **not** use plain `pip install repomind`: that distribution name on PyPI currently resolves
-to a different project. The current published RepoMind beta is `v2.0.0b10`; install its exact
-wheel from the project's GitHub Releases page and verify its published SHA-256. The source tree
-may contain a newer unreleased candidate. The installed distribution identity and the
-`repomind` CLI command name are related but not interchangeable proof that the correct project
-was installed.
+to a different project. The current published RepoMind beta is
+[`v2.0.0b11`](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b11); install its exact
+wheel from that GitHub Release and verify its published SHA-256. The installed distribution
+identity and the `repomind` CLI command name are related but not interchangeable proof that the
+correct project was installed.
 
 For contributors working from a trusted checkout:
 

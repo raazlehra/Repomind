@@ -1,7 +1,8 @@
 # Installation and Lifecycle
 
 RepoMind is distributed through [GitHub Releases](https://github.com/raazlehra/Repomind/releases).
-The current published beta is `v2.0.0b10`.
+The current published beta is
+[`v2.0.0b11`](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b11).
 
 > [!WARNING]
 > Do not run plain `pip install repomind`. The `repomind` name on PyPI currently resolves to
@@ -10,22 +11,22 @@ The current published beta is `v2.0.0b10`.
 
 ## Install a published release on Windows
 
-The GitHub Release wheel is authoritative. For example, the published b10 wheel is:
+The GitHub Release wheel is authoritative. The published b11 wheel is:
 
 ```text
-https://github.com/raazlehra/Repomind/releases/download/v2.0.0b10/repomind-2.0.0b10-py3-none-any.whl
+https://github.com/raazlehra/Repomind/releases/download/v2.0.0b11/repomind-2.0.0b11-py3-none-any.whl
 ```
 
-Its release SHA-256 is
-`8ac3533c831a9aae1032081c3a7083761d8e3aed09a69f6cc92293cf6405f9b1`.
-Confirm the version and hash on the release page for every later release; do not reuse the b10
+Its published SHA-256 is
+`3202f593084a5f13cbe68c21bc7a2bc3c6207671a28e10303267bf0b0594ba9f`.
+Confirm the version and hash on the release page for every later release; do not reuse the b11
 value for another artifact.
 
 Download the exact wheel, verify it, and install it into a dedicated environment. PowerShell:
 
 ```powershell
-$Wheel = (Resolve-Path "C:\Downloads\repomind-2.0.0b10-py3-none-any.whl").Path
-$Expected = "8ac3533c831a9aae1032081c3a7083761d8e3aed09a69f6cc92293cf6405f9b1"
+$Wheel = (Resolve-Path "C:\Downloads\repomind-2.0.0b11-py3-none-any.whl").Path
+$Expected = "3202f593084a5f13cbe68c21bc7a2bc3c6207671a28e10303267bf0b0594ba9f"
 $Actual = (Get-FileHash -Algorithm SHA256 $Wheel).Hash.ToLowerInvariant()
 if ($Actual -ne $Expected) { throw "RepoMind wheel checksum mismatch" }
 
@@ -42,23 +43,23 @@ elsewhere on `PATH`. The installed distribution metadata name and CLI command ar
 On Linux or another POSIX system with `sha256sum`:
 
 ```bash
-curl -fL -o repomind-2.0.0b10-py3-none-any.whl \
-  https://github.com/raazlehra/Repomind/releases/download/v2.0.0b10/repomind-2.0.0b10-py3-none-any.whl
+curl -fL -o repomind-2.0.0b11-py3-none-any.whl \
+  https://github.com/raazlehra/Repomind/releases/download/v2.0.0b11/repomind-2.0.0b11-py3-none-any.whl
 printf '%s  %s\n' \
-  '8ac3533c831a9aae1032081c3a7083761d8e3aed09a69f6cc92293cf6405f9b1' \
-  'repomind-2.0.0b10-py3-none-any.whl' | sha256sum -c -
+  '3202f593084a5f13cbe68c21bc7a2bc3c6207671a28e10303267bf0b0594ba9f' \
+  'repomind-2.0.0b11-py3-none-any.whl' | sha256sum -c -
 python3 -m venv "$HOME/.local/share/repomind-venv"
-"$HOME/.local/share/repomind-venv/bin/python" -m pip install ./repomind-2.0.0b10-py3-none-any.whl
+"$HOME/.local/share/repomind-venv/bin/python" -m pip install ./repomind-2.0.0b11-py3-none-any.whl
 "$HOME/.local/share/repomind-venv/bin/python" -m repomind --version
 ```
 
 On macOS, compare `shasum -a 256 <wheel>` with the GitHub Release hash before installing.
 
-RepoMind requires Python 3.11+. The current b11 release matrix explicitly validates Python
+RepoMind requires Python 3.11+. The b11 release matrix explicitly validates Python
 3.11–3.13. Other Python versions are not claimed as release-tested unless listed in the release
 notes. Windows installed-wheel release checks use paths containing spaces and run outside the
-source checkout. Linux installed-wheel behavior is a CI gate; a release must not claim it passed
-until the corresponding GitHub Actions run is green.
+source checkout. Linux and Windows installed-wheel checks passed for the b11 release commit in
+the required GitHub Actions workflow.
 
 ## Optional dependencies
 
@@ -118,27 +119,31 @@ repomind context "trace the authentication flow"
 `init` creates repository-local `.repomind` index data. It does not mean "install RepoMind."
 Treat `.repomind/` as local metadata and do not normally commit it.
 
-## Upgrade an existing b10 index to a candidate
+## Upgrade from b10 to b11
 
-Back up important repository data, then install the candidate wheel into the same dedicated
-environment using its exact path:
+Back up important repository data, then install the b11 wheel into the same dedicated environment
+using its exact path:
 
 ```powershell
-& "C:\Tools\RepoMind\Scripts\python.exe" -m pip install --upgrade "C:\Downloads\repomind-<new-version>-py3-none-any.whl"
+& "C:\Tools\RepoMind\Scripts\python.exe" -m pip install --upgrade "C:\Downloads\repomind-2.0.0b11-py3-none-any.whl"
 & "C:\Tools\RepoMind\Scripts\python.exe" -m repomind --version
 & "C:\Tools\RepoMind\Scripts\python.exe" -m repomind status -C "C:\path\to\repository"
 & "C:\Tools\RepoMind\Scripts\python.exe" -m repomind doctor "C:\path\to\repository"
 ```
 
-Local Windows validation on 2026-10-10 installed the authoritative b10 wheel after matching its
-published SHA-256, created a schema-2 index and manual memory, then upgraded to the exact local
-`2.0.0b11` candidate wheel. Repository identity, creation metadata, schema, and manual memory were
-preserved; doctor, context, and test-impact remained healthy. Uninstall/reinstall also preserved
-the index, configuration, and manual memory. A separate disposable forced rebuild preserved
-configuration and removed database-only manual memory as documented.
+Pre-release Windows validation on 2026-10-10 installed the authoritative b10 wheel after matching
+its published SHA-256, created a schema-2 index and manual memory, then upgraded to the exact local
+`2.0.0b11` candidate wheel built from the release code. Repository identity, creation metadata,
+schema, and manual memory were preserved; doctor, context, and test-impact remained healthy.
+Uninstall/reinstall also preserved the index, configuration, and manual memory. A separate
+disposable forced rebuild preserved configuration and removed database-only manual memory as
+documented.
 
-This is evidence for that exact b10-to-b11 candidate path on Windows/Python 3.12.14, not a blanket
-compatibility promise. Linux evidence remains pending the actual GitHub Actions run.
+The final public b11 wheel was later rebuilt from the same release commit and independently
+downloaded, checksum-verified, installed, and smoke-tested. The full b10-to-final-downloaded-b11
+lifecycle sequence was not repeated. The lifecycle evidence is therefore limited to the exact
+b10-to-b11 candidate path on Windows/Python 3.12.14; Linux and Windows installed-wheel CI checks
+for the final release commit passed separately. This is not a blanket compatibility promise.
 
 ## Uninstall and reinstall
 
