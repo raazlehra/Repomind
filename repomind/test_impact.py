@@ -40,13 +40,18 @@ _NODE_SCRIPT_SHELL_PUNCTUATION = ";&|<>()"
 _NODE_TEST_INCOMPATIBLE_OPTIONS = frozenset(
     {
         "-c",
+        "-h",
         "-i",
+        "-v",
         "--check",
         "--eval",
+        "--help",
         "--inspect",
         "--inspect-brk",
         "--inspect-wait",
         "--interactive",
+        "--v8-options",
+        "--version",
         "--watch-path",
     }
 )

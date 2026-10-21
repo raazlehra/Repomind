@@ -168,6 +168,7 @@ def test_node_test_runner_script_produces_recommended_commands(tmp_path: Path) -
         "node --test --test-name-pattern sum test/*.test.mjs",
         "node --test --test-reporter=spec test/*.test.mjs",
         "node --test -- test/--check.test.mjs",
+        "node --test -- --version",
         "node --test 'test/a && b.test.mjs'",
     ],
 )
@@ -204,6 +205,19 @@ def test_node_test_runner_detection_accepts_runtime_test_flags(script: str) -> N
     ],
 )
 def test_node_test_runner_detection_rejects_application_arguments(script: str) -> None:
+    assert _is_node_test_script(script) is False
+
+@pytest.mark.parametrize(
+    "script",
+    [
+        "node --test --version",
+        "node --test -v",
+        "node --test --help",
+        "node --test -h",
+        "node --test --v8-options",
+    ],
+)
+def test_node_test_runner_detection_rejects_informational_flags(script: str) -> None:
     assert _is_node_test_script(script) is False
 
 
@@ -257,6 +271,7 @@ def test_node_test_text_in_comments_or_strings_does_not_override_real_framework(
         "node --test --eval \"console.log(1)\"",
         "node --test --check",
         "node --test && echo done",
+        "node --test --version",
     ],
 )
 def test_node_test_runner_does_not_use_a_non_runner_npm_script(
