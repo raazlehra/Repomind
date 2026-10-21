@@ -11,7 +11,11 @@ from repomind.cli import main
 from repomind.database import IndexDatabase
 from repomind.indexer import Indexer
 from repomind.services import test_impact as service_test_impact
-from repomind.test_impact import analyze_test_impact, detect_test_commands
+from repomind.test_impact import (
+    _is_node_test_script,
+    analyze_test_impact,
+    detect_test_commands,
+)
 
 
 def test_changed_service_maps_to_unit_test_without_promoting_unrelated_test(
@@ -126,6 +130,194 @@ def test_frontend_component_change_finds_frontend_test(tmp_path: Path) -> None:
     assert targeted
     assert targeted[0]["framework"] == "vitest"
     assert "Dashboard.test.tsx" in targeted[0]["command"]
+
+
+def test_node_test_runner_script_produces_recommended_commands(tmp_path: Path) -> None:
+    repo = tmp_path / "node_test_repo"
+    _write(
+        repo / "package.json",
+        json.dumps({"scripts": {"test": "node --test test/*.test.mjs"}}),
+    )
+    _write(repo / "src" / "sum.mjs", "export const sum = (left, right) => left + right;\n")
+    _write(
+        repo / "test" / "sum.test.mjs",
+        "import test from 'node:test';\n"
+        "import assert from 'node:assert/strict';\n"
+        "import { sum } from '../src/sum.mjs';\n"
+        "test('sum', () => assert.equal(sum(2, 3), 5));\n",
+    )
+    Indexer(repo).initialize()
+
+    report = _analyze(repo, ["src/sum.mjs"])
+
+    commands = report["recommended_commands"]
+    assert [(item["framework"], item["scope"]) for item in commands] == [("node:test", "broad")]
+    assert commands[0]["argv"] == ["npm", "run", "test"]
+    assert commands[0]["related_tests"] == []
+    assert "exact test-file coverage is not inferred" in commands[0]["reason"]
+
+
+@pytest.mark.parametrize(
+    "script",
+    [
+        "node --test test/*.test.mjs",
+        "node.exe --test test/*.test.mjs",
+        "node --no-warnings --test test/*.test.mjs",
+        "node --conditions=development --test test/*.test.mjs",
+        "node -r node:assert --test=false test/*.test.mjs",
+        "node --test --test-name-pattern sum test/*.test.mjs",
+        "node --test --test-reporter=spec test/*.test.mjs",
+        "node --test -- test/--check.test.mjs",
+        "node --test -- --version",
+        "node --test 'test/a && b.test.mjs'",
+    ],
+)
+def test_node_test_runner_detection_accepts_runtime_test_flags(script: str) -> None:
+    assert _is_node_test_script(script) is True
+
+
+@pytest.mark.parametrize(
+    "script",
+    [
+        "node app.mjs --test",
+        "node --no-warnings app.mjs --test",
+        "node -- app.mjs --test",
+        "node --eval 'console.log(1)' --test",
+        "node --test --eval \"console.log(1)\"",
+        "node --test -e \"console.log(1)\"",
+        "node --test --check",
+        "node --test -c",
+        "node --test --interactive",
+        "node --test -i",
+        "node --test --watch-path=src",
+        "node --test --inspect",
+        "node --test test/unit.test.mjs --eval=console.log(1)",
+        "node --test && echo done",
+        "node --test||echo failed",
+        "node --test; echo done",
+        "node --test | tee results.txt",
+        "node --test > results.txt",
+        "node --test\necho done",
+        "node --require --test test/*.test.mjs",
+        "npm exec node --test test/*.test.mjs",
+        "node '",
+        "node " + ("--no-warnings " * 300) + "--test",
+    ],
+)
+def test_node_test_runner_detection_rejects_application_arguments(script: str) -> None:
+    assert _is_node_test_script(script) is False
+
+@pytest.mark.parametrize(
+    "script",
+    [
+        "node --test --version",
+        "node --test -v",
+        "node --test --help",
+        "node --test -h",
+        "node --test --v8-options",
+    ],
+)
+def test_node_test_runner_detection_rejects_informational_flags(script: str) -> None:
+    assert _is_node_test_script(script) is False
+
+
+@pytest.mark.parametrize(
+    ("misleading_source", "framework", "script"),
+    [
+        (
+            "// Previously: import test from 'node:test'\n"
+            "import { describe } from 'vitest';\n",
+            "vitest",
+            "vitest run",
+        ),
+        (
+            "const note = \"import test from 'node:test'\";\n"
+            "import { describe } from '@jest/globals';\n",
+            "jest",
+            "jest",
+        ),
+    ],
+)
+def test_node_test_text_in_comments_or_strings_does_not_override_real_framework(
+    tmp_path: Path, misleading_source: str, framework: str, script: str
+) -> None:
+    repo = tmp_path / f"misleading_node_test_{framework}"
+    _write(
+        repo / "package.json",
+        json.dumps(
+            {
+                "scripts": {
+                    "test": script,
+                    "test:node": "node --test test/*.test.mjs",
+                },
+                "devDependencies": {framework: "1.0.0"},
+            }
+        ),
+    )
+    _write(repo / "test" / "unit.test.mjs", misleading_source)
+    Indexer(repo).initialize()
+
+    report = _analyze(repo, ["test/unit.test.mjs"])
+
+    assert {item["framework"] for item in report["recommended_commands"]} == {framework}
+
+
+@pytest.mark.parametrize(
+    "script",
+    [
+        "echo node:test",
+        "node app.mjs --test",
+        "node -- app.mjs --test",
+        "node --test --eval \"console.log(1)\"",
+        "node --test --check",
+        "node --test && echo done",
+        "node --test --version",
+    ],
+)
+def test_node_test_runner_does_not_use_a_non_runner_npm_script(
+    tmp_path: Path, script: str
+) -> None:
+    repo = tmp_path / "node_test_without_script"
+    _write(
+        repo / "package.json",
+        json.dumps({"scripts": {"test": script}}),
+    )
+    _write(
+        repo / "test" / "unit.test.mjs",
+        "import test from 'node:test';\ntest('unit', () => {});\n",
+    )
+    Indexer(repo).initialize()
+
+    report = _analyze(repo, ["test/unit.test.mjs"])
+
+    assert report["recommended_commands"] == []
+    assert report["warnings"] == [
+        "Could not classify JavaScript test framework for test/unit.test.mjs."
+    ]
+
+
+def test_malformed_manifest_does_not_hide_valid_node_test_commands(tmp_path: Path) -> None:
+    repo = tmp_path / "node_test_manifest_isolation"
+    _write(repo / "broken" / "package.json", "{not-json")
+    _write(
+        repo / "web" / "package.json",
+        json.dumps({"scripts": {"test": "node --test test/*.test.mjs"}}),
+    )
+    _write(
+        repo / "web" / "test" / "unit.test.mjs",
+        "import test from 'node:test';\ntest('unit', () => {});\n",
+    )
+    Indexer(repo).initialize()
+
+    report = _analyze(repo, ["web/test/unit.test.mjs"])
+
+    assert [item["argv"] for item in report["recommended_commands"]] == [
+        ["npm", "--prefix", "web", "run", "test"]
+    ]
+    assert len(report["warnings"]) == 1
+    assert report["warnings"][0].startswith(
+        "Could not read test commands from broken/package.json:"
+    )
 
 
 def test_no_tests_produces_truthful_gap_and_unknown_coverage(tmp_path: Path) -> None:

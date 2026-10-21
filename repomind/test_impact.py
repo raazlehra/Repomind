@@ -19,6 +19,57 @@ from repomind.scanner import classify_file, is_executable_test_path
 
 TEST_IMPACT_SCHEMA_VERSION = "repomind.test-impact.v1"
 MAX_TEST_SOURCE_BYTES = 500_000
+_NODE_TEST_SCRIPT_MAX_CHARS = 4_096
+_NODE_TEST_SCRIPT_MAX_ARGS = 64
+_NODE_OPTIONS_BEFORE_TEST = frozenset(
+    {
+        "--enable-source-maps",
+        "--no-deprecation",
+        "--no-warnings",
+        "--preserve-symlinks",
+        "--preserve-symlinks-main",
+        "--throw-deprecation",
+        "--trace-deprecation",
+        "--trace-uncaught",
+        "--trace-warnings",
+        "--use-strict",
+        "--zero-fill-buffers",
+    }
+)
+_NODE_SCRIPT_SHELL_PUNCTUATION = ";&|<>()"
+_NODE_TEST_INCOMPATIBLE_OPTIONS = frozenset(
+    {
+        "-c",
+        "-h",
+        "-i",
+        "-v",
+        "--check",
+        "--eval",
+        "--help",
+        "--inspect",
+        "--inspect-brk",
+        "--inspect-wait",
+        "--interactive",
+        "--v8-options",
+        "--version",
+        "--watch-path",
+    }
+)
+_NODE_TEST_INCOMPATIBLE_PREFIXES = (
+    "-e",
+    "--check=",
+    "--eval=",
+    "--inspect=",
+    "--inspect-brk=",
+    "--inspect-wait=",
+    "--interactive=",
+    "--watch-path=",
+)
+
+_NODE_OPTIONS_WITH_VALUE_BEFORE_TEST = frozenset(
+    {"-C", "-r", "--conditions", "--import", "--require"}
+)
+
 
 OutputMode = Literal["compact_json", "pretty_json"]
 
@@ -523,7 +574,7 @@ def detect_test_commands(
         if owner != ".":
             prefix.extend(["--prefix", owner])
         prefix.extend(["run", script_name])
-        if selected:
+        if selected and framework != "node:test":
             package_relative = [_relative_to_boundary(path_value, owner) for path_value in selected]
             if not _append_command_candidate(
                 commands,
@@ -538,6 +589,13 @@ def detect_test_commands(
                 budget,
             ):
                 break
+        broad_tests = [] if framework == "node:test" else sorted(family_tests)
+        broad_reason = (
+            f"Run the existing npm '{script_name}' node:test suite; "
+            "exact test-file coverage is not inferred."
+            if framework == "node:test"
+            else f"Run the existing npm '{script_name}' {framework} suite."
+        )
         if not _append_command_candidate(
             commands,
             _command(
@@ -545,8 +603,8 @@ def detect_test_commands(
                 "broad",
                 prefix,
                 ".",
-                sorted(family_tests),
-                f"Run the existing npm '{script_name}' {framework} suite.",
+                broad_tests,
+                broad_reason,
             ),
             budget,
         ):
@@ -661,6 +719,76 @@ def _manifest_path(owner: str) -> str:
     return "package.json" if owner == "." else f"{owner}/package.json"
 
 
+def _is_node_test_script(value: Any) -> bool:
+    if not isinstance(value, str) or len(value) > _NODE_TEST_SCRIPT_MAX_CHARS:
+        return False
+    if any(character in value for character in "\r\n`"):
+        return False
+    try:
+        lexer = shlex.shlex(
+            value,
+            posix=True,
+            punctuation_chars=_NODE_SCRIPT_SHELL_PUNCTUATION,
+        )
+        lexer.whitespace_split = True
+        lexer.commenters = ""
+        argv = list(lexer)
+    except ValueError:
+        return False
+    if not argv or len(argv) > _NODE_TEST_SCRIPT_MAX_ARGS:
+        return False
+    if any(
+        argument
+        and all(character in _NODE_SCRIPT_SHELL_PUNCTUATION for character in argument)
+        for argument in argv
+    ):
+        return False
+    executable = PurePosixPath(argv[0].replace("\\", "/")).name.lower()
+    if executable not in {"node", "node.exe"}:
+        return False
+
+    found_test = False
+    options_ended = False
+    index = 1
+    while index < len(argv):
+        argument = argv[index]
+        if found_test:
+            if options_ended:
+                index += 1
+                continue
+            if argument == "--":
+                options_ended = True
+                index += 1
+                continue
+            if argument in _NODE_TEST_INCOMPATIBLE_OPTIONS or argument.startswith(
+                _NODE_TEST_INCOMPATIBLE_PREFIXES
+            ):
+                return False
+            index += 1
+            continue
+        if argument == "--test" or argument.startswith("--test="):
+            found_test = True
+            index += 1
+            continue
+        if argument == "--":
+            return False
+        if argument in _NODE_OPTIONS_BEFORE_TEST:
+            index += 1
+            continue
+        if argument in _NODE_OPTIONS_WITH_VALUE_BEFORE_TEST:
+            index += 2
+            continue
+        if any(
+            argument.startswith(f"{option}=") and len(argument) > len(option) + 1
+            for option in _NODE_OPTIONS_WITH_VALUE_BEFORE_TEST
+            if option.startswith("--")
+        ):
+            index += 1
+            continue
+        return False
+    return found_test
+
+
 def _javascript_test_framework_for_file(
     path: str, source: str, dependencies: set[str], scripts: dict[str, Any]
 ) -> str | None:
@@ -685,6 +813,8 @@ def _javascript_test_framework_for_file(
         if framework in dependencies
         or any(framework in str(value).lower() for value in scripts.values())
     }
+    if any(_is_node_test_script(value) for value in scripts.values()):
+        frameworks.add("node:test")
     return next(iter(sorted(frameworks))) if len(frameworks) == 1 else None
 
 
@@ -694,7 +824,9 @@ def _script_for_framework(framework: str, scripts: dict[str, Any]) -> str | None
         name, value = str(raw_name), str(raw_value).lower()
         lowered_name = name.lower()
         score = 0
-        if framework in value:
+        if framework != "node:test" and framework in value:
+            score += 100
+        if framework == "node:test" and _is_node_test_script(raw_value):
             score += 100
         if framework == "playwright" and ("e2e" in lowered_name or "playwright" in lowered_name):
             score += 50
@@ -703,6 +835,7 @@ def _script_for_framework(framework: str, scripts: dict[str, Any]) -> str | None
         if score:
             candidates.append((-score, name))
     return sorted(candidates)[0][1] if candidates else None
+
 
 def render_test_impact(
     report: dict[str, Any], output_format: str, max_output_bytes: int | None = None
