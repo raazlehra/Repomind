@@ -588,3 +588,139 @@ def _git(repo: Path, *args: str) -> None:
         ["git", "-C", str(repo), *args], check=False, capture_output=True, text=True, timeout=10
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_multiline_javascript_import_creates_only_verified_direct_test_edges(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "multiline_import_repo"
+    _write(
+        repo / "package.json",
+        json.dumps({"scripts": {"test": "node --test test/*.test.mjs"}}),
+    )
+    _write(
+        repo / "src" / "adapters" / "redstamp.mjs",
+        "export function recordsToTrajectory() {}\nexport function verifyChain() {}\n",
+    )
+    _write(repo / "src" / "one-line.mjs", "export const oneLine = true;\n")
+    _write(repo / "src" / "same-line.mjs", "export const sameLine = true;\n")
+    _write(repo / "src" / "comment-trivia.mjs", "export const commentTrivia = true;\n")
+    _write(repo / "src" / "unrelated.mjs", "export const unrelated = true;\n")
+    _write(
+        repo / "test" / "redstamp-adapter.test.mjs",
+        """import test from 'node:test';
+import { orphan }
+import { oneLine } from '../src/one-line.mjs';
+function greet() {} import { sameLine } from '../src/same-line.mjs';
+const marker = 1; /* note */ import { commentTrivia } from '../src/comment-trivia.mjs';
+import {
+  recordsToTrajectory,
+  verifyChain,
+} from '../src/adapters/redstamp.mjs';
+import { missing } from '../src/missing.mjs';
+import { outside } from '../../../../outside.mjs';
+// import { commented } from '../src/unrelated.mjs';
+/*
+import {
+  blockComment,
+} from '../src/unrelated.mjs';
+*/
+const note = "import { quoted } from '../src/unrelated.mjs'";
+const dynamicPath = '../src/unrelated.mjs';
+void import('../src/unrelated.mjs');
+void import(dynamicPath);
+test('adapter', () => {
+  void oneLine;
+  void sameLine;
+  void commentTrivia;
+  void recordsToTrajectory;
+  void verifyChain;
+  void missing;
+  void outside;
+  void note;
+});
+""",
+    )
+    Indexer(repo).initialize()
+
+    with IndexDatabase(repo) as database:
+        stored_imports = {
+            (str(row["module"]), row["imported_name"], row["resolved_file_id"])
+            for row in database.connection.execute(
+                """SELECT i.module, i.imported_name, i.resolved_file_id
+                   FROM imports i JOIN files f ON f.id=i.file_id
+                   WHERE f.path='test/redstamp-adapter.test.mjs'"""
+            )
+        }
+        edges = {
+            (
+                str(row["target"]),
+                str(row["kind"]),
+                float(row["confidence"]),
+            )
+            for row in database.connection.execute(
+                """SELECT tf.path AS target, d.kind, d.confidence
+                   FROM dependencies d
+                   JOIN files sf ON sf.id=d.source_file_id
+                   LEFT JOIN files tf ON tf.id=d.target_file_id
+                   WHERE sf.path='test/redstamp-adapter.test.mjs'"""
+            )
+            if row["target"] is not None
+        }
+        report = analyze_test_impact(database, ["src/adapters/redstamp.mjs"])
+        same_line_report = analyze_test_impact(database, ["src/same-line.mjs"])
+        comment_trivia_report = analyze_test_impact(database, ["src/comment-trivia.mjs"])
+        unrelated_report = analyze_test_impact(database, ["src/unrelated.mjs"])
+
+    assert ("src/adapters/redstamp.mjs", "imports", 1.0) in edges
+    assert ("src/adapters/redstamp.mjs", "test-target", 0.95) in edges
+    assert ("src/one-line.mjs", "imports", 1.0) in edges
+    assert ("src/one-line.mjs", "test-target", 0.95) in edges
+    assert ("src/same-line.mjs", "imports", 1.0) in edges
+    assert ("src/same-line.mjs", "test-target", 0.95) in edges
+    assert ("src/comment-trivia.mjs", "imports", 1.0) in edges
+    assert ("src/comment-trivia.mjs", "test-target", 0.95) in edges
+    assert not any(target == "src/unrelated.mjs" for target, _, _ in edges)
+
+    stored_modules = {module for module, _, _ in stored_imports}
+    assert "../src/adapters/redstamp.mjs" in stored_modules
+    assert "../src/one-line.mjs" in stored_modules
+    assert "../src/same-line.mjs" in stored_modules
+    assert any(
+        module == "../src/one-line.mjs" and name == "oneLine" and resolved_id is not None
+        for module, name, resolved_id in stored_imports
+    )
+    assert not any(name == "orphan } import { oneLine" for _, name, _ in stored_imports)
+    assert "../src/comment-trivia.mjs" in stored_modules
+    assert ("../src/missing.mjs", "missing", None) in stored_imports
+    assert ("../../../../outside.mjs", "outside", None) in stored_imports
+    assert "../src/unrelated.mjs" not in stored_modules
+
+    test = _test_by_path(report, "test/redstamp-adapter.test.mjs")
+    assert test["confidence"] == "high"
+    assert test["structurally_related"] is True
+    assert test["coverage"] == "unknown"
+    relationships = {
+        item["relationship"]
+        for item in test["evidence"]
+        if item["kind"] == "dependency"
+    }
+    assert {"imports", "test-target"} <= relationships
+    same_line_test = _test_by_path(same_line_report, "test/redstamp-adapter.test.mjs")
+    assert same_line_test["confidence"] == "high"
+    assert same_line_test["structurally_related"] is True
+    assert same_line_test["coverage"] == "unknown"
+    comment_trivia_test = _test_by_path(comment_trivia_report, "test/redstamp-adapter.test.mjs")
+    assert comment_trivia_test["confidence"] == "high"
+    assert comment_trivia_test["structurally_related"] is True
+    assert comment_trivia_test["coverage"] == "unknown"
+    assert not any(
+        item["file"] == "test/redstamp-adapter.test.mjs"
+        and item["confidence"] == "high"
+        for item in unrelated_report["existing_tests"]
+    )
+
+    assert [(item["framework"], item["scope"]) for item in report["recommended_commands"]] == [
+        ("node:test", "broad")
+    ]
+    assert report["recommended_commands"][0]["related_tests"] == []

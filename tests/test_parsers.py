@@ -153,3 +153,147 @@ enum class TransactionType { EXPENSE, INCOME }
     symbols = {symbol.name: symbol for symbol in result.symbols}
     assert symbols["REPOMIND_FRESHNESS_TEST_MODIFIED"].kind == "object"
     assert symbols["TransactionType"].kind == "enum"
+
+
+def test_javascript_extracts_multiline_and_one_line_static_imports() -> None:
+    source = """import defaultValue from './default.mjs'; import { inlineValue } from './inline.mjs';
+import {
+  recordsToTrajectory,
+  verifyChain as checkChain,
+} from '../src/adapters/redstamp.mjs';
+import * as helpers from './helpers.mjs';
+import './side-effect.mjs';
+export {
+  publicValue,
+} from './exports.mjs';
+"""
+
+    result = JavaScriptParser().parse(
+        Path("test/redstamp-adapter.test.mjs"),
+        "test/redstamp-adapter.test.mjs",
+        source,
+    )
+
+    imports = {
+        (item.module, item.name, item.alias, item.line, item.is_relative) for item in result.imports
+    }
+    assert ("./default.mjs", "default", "defaultValue", 1, True) in imports
+    assert ("./inline.mjs", "inlineValue", None, 1, True) in imports
+    assert (
+        "../src/adapters/redstamp.mjs",
+        "recordsToTrajectory",
+        None,
+        2,
+        True,
+    ) in imports
+    assert (
+        "../src/adapters/redstamp.mjs",
+        "verifyChain",
+        "checkChain",
+        2,
+        True,
+    ) in imports
+    assert ("./helpers.mjs", "*", "helpers", 6, True) in imports
+    assert ("./side-effect.mjs", None, None, 7, True) in imports
+    assert ("./exports.mjs", "publicValue", None, 8, True) in imports
+
+
+def test_javascript_ignores_non_static_import_text_and_invalid_declarations() -> None:
+    source = """// import { commented } from './commented.mjs';
+/*
+import {
+  blocked,
+} from './block-comment.mjs';
+*/
+const note = "import { quoted } from './quoted.mjs'";
+const lazyLiteral = import('./dynamic-literal.mjs');
+const moduleName = './dynamic-expression.mjs';
+const lazyExpression = import(moduleName);
+import.meta.resolve('./metadata-only.mjs');
+import {
+  malformed
+from './invalid.mjs';
+"""
+
+    result = JavaScriptParser().parse(Path("sample.mjs"), "sample.mjs", source)
+
+    assert result.imports == []
+
+
+def test_javascript_malformed_import_does_not_absorb_following_declaration() -> None:
+    source = """import { orphan }
+import { real } from './real.mjs';
+"""
+
+    result = JavaScriptParser().parse(Path("sample.mjs"), "sample.mjs", source)
+
+    assert [
+        (item.module, item.name, item.alias, item.line) for item in result.imports
+    ] == [("./real.mjs", "real", None, 2)]
+
+
+def test_javascript_detects_static_import_after_same_line_block_boundary() -> None:
+    source = """function greet() {} import { join } from 'node:path';
+function load() {} import('./dynamic.mjs');
+function documented() {} // import { commented } from './commented.mjs';
+const note = "} import { quoted } from './quoted.mjs';";
+"""
+
+    result = JavaScriptParser().parse(Path("sample.mjs"), "sample.mjs", source)
+
+    assert [
+        (
+            item.module,
+            item.name,
+            item.alias,
+            item.line,
+            item.is_relative,
+        )
+        for item in result.imports
+    ] == [("node:path", "join", None, 1, False)]
+
+
+def test_javascript_allows_block_comment_trivia_before_static_imports() -> None:
+    source = """/* license */ import { x } from './x.mjs';
+const a = 1; /* note */ import { x } from './x.mjs';
+/* initialization */ import './setup.mjs';
+"""
+
+    result = JavaScriptParser().parse(Path("sample.mjs"), "sample.mjs", source)
+
+    assert [
+        (
+            item.module,
+            item.name,
+            item.alias,
+            item.line,
+        )
+        for item in result.imports
+    ] == [
+        ("./x.mjs", "x", None, 1),
+        ("./x.mjs", "x", None, 2),
+        ("./setup.mjs", None, None, 3),
+    ]
+
+
+def test_javascript_block_comment_trivia_preserves_non_static_exclusions() -> None:
+    source = """/* import { blocked } from './blocked.mjs'; */
+const note = "/* note */ import { quoted } from './quoted.mjs'";
+const lazy = 1; /* note */ import('./dynamic.mjs');
+const meta = 1; /* note */ import.meta.resolve('./meta.mjs');
+"""
+
+    result = JavaScriptParser().parse(Path("sample.mjs"), "sample.mjs", source)
+
+    assert result.imports == []
+
+
+def test_javascript_static_import_scan_is_bounded() -> None:
+    sources = [
+        "import {\n" + ("  repeatedName,\n" * 1_000) + "} from './too-far.mjs';\n",
+        "/*" + ("x" * 8_192) + "*/ import { tooFar } from './too-far.mjs';\n",
+    ]
+    for source in sources:
+        result = JavaScriptParser().parse(Path("oversized.mjs"), "oversized.mjs", source)
+
+        assert result.imports == []
