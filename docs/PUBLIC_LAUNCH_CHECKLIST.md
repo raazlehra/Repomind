@@ -19,8 +19,10 @@ automatically complete the remaining launch work.
 - [x] External static validation - the installed b12 Tree-sitter wheel passed the pinned
   Plumbline checks without executing npm scripts; this is maintainer-run evidence, not
   independent customer validation or runtime coverage.
-- [ ] Exact candidate CI - PENDING; the draft PR must pass tests on Python 3.11/3.12/3.13,
-  quality, and Windows wheel smoke for the final candidate commit.
+- [x] Exact candidate CI - PASS for commit
+  `6f40eab8149774e7ec2bdbd9988c37043cea5228`: [GitHub Actions run `39847039359`](https://github.com/raazlehra/Repomind/actions/runs/39847039359)
+  passed `tests (3.11)`, `tests (3.12)`, `tests (3.13)`, `quality`, and
+  `windows-wheel-smoke`.
 - [ ] Publication - PENDING explicit owner approval; no b12 tag, GitHub Release, asset upload,
   website update, or outreach has occurred.
 - [ ] Independent tester feedback - PENDING; maintainer-run Plumbline validation does not satisfy
