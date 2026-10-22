@@ -5,11 +5,9 @@ from pathlib import Path
 
 from repomind.models import EdgeCandidate, ImportRecord, ParseResult, Route, Symbol
 
-_IMPORT_RE = re.compile(
-    r"(?:import|export)\s+(?P<what>.*?)\s+from\s*['\"](?P<module>[^'\"]+)['\"]",
-    re.MULTILINE,
-)
-_SIDE_EFFECT_RE = re.compile(r"import\s*['\"](?P<module>[^'\"]+)['\"]")
+_STATIC_IMPORT_BOUNDARY_RE = re.compile(r"^|[;}]", re.MULTILINE)
+_STATIC_IMPORT_KEYWORD_RE = re.compile(r"(?P<keyword>import|export)\b")
+_MAX_STATIC_IMPORT_CHARS = 8_192
 _REQUIRE_RE = re.compile(
     r"(?:const|let|var)\s+(?P<what>[\w${},\s]+)\s*=\s*require\(['\"](?P<module>[^'\"]+)['\"]\)"
 )
@@ -114,43 +112,25 @@ class JavaScriptParser:
 
     @staticmethod
     def _imports(source: str, result: ParseResult) -> None:
-        occupied: list[tuple[int, int]] = []
-        for match in _IMPORT_RE.finditer(source):
-            occupied.append(match.span())
-            module = match.group("module")
-            what = match.group("what").strip()
-            line = source.count("\n", 0, match.start()) + 1
-            if what.startswith("{") and what.endswith("}"):
-                for item in what[1:-1].split(","):
-                    bits = item.strip().split(" as ")
-                    if bits and bits[0]:
-                        result.imports.append(
-                            ImportRecord(
-                                module,
-                                bits[0],
-                                bits[1] if len(bits) > 1 else None,
-                                line,
-                                module.startswith("."),
-                            )
-                        )
-            elif what.startswith("*"):
-                alias = what.split(" as ")[-1].strip()
-                result.imports.append(
-                    ImportRecord(module, "*", alias, line, module.startswith("."))
-                )
-            else:
-                default_name = what.split(",", 1)[0].strip()
-                if default_name:
-                    result.imports.append(
-                        ImportRecord(module, "default", default_name, line, module.startswith("."))
-                    )
-        for match in _SIDE_EFFECT_RE.finditer(source):
-            if any(start <= match.start() < end for start, end in occupied):
+        code_positions = _code_positions(source)
+        for match in _STATIC_IMPORT_BOUNDARY_RE.finditer(source):
+            trivia_limit = min(len(source), match.end() + _MAX_STATIC_IMPORT_CHARS)
+            start = _skip_static_import_trivia(source, match.end(), trivia_limit)
+            keyword_match = _STATIC_IMPORT_KEYWORD_RE.match(source, start, trivia_limit)
+            if keyword_match is None:
                 continue
-            module = match.group("module")
-            line = source.count("\n", 0, match.start()) + 1
-            result.imports.append(ImportRecord(module, None, None, line, module.startswith(".")))
+            if not code_positions[start]:
+                continue
+            keyword = keyword_match.group("keyword")
+            parsed = _static_import_at(source, keyword, start, keyword_match.end())
+            if parsed is None:
+                continue
+            module, clause = parsed
+            line = source.count("\n", 0, start) + 1
+            _append_import_records(result, module, clause, line)
         for match in _REQUIRE_RE.finditer(source):
+            if not code_positions[match.start()]:
+                continue
             module = match.group("module")
             line = source.count("\n", 0, match.start()) + 1
             result.imports.append(
@@ -158,3 +138,178 @@ class JavaScriptParser:
                     module, None, match.group("what").strip(), line, module.startswith(".")
                 )
             )
+
+
+def _static_import_at(
+    source: str, keyword: str, start: int, keyword_end: int
+) -> tuple[str, str | None] | None:
+    limit = min(len(source), start + _MAX_STATIC_IMPORT_CHARS)
+    cursor = _skip_space_and_comments(source, keyword_end, limit)
+    if cursor >= limit:
+        return None
+    if keyword == "import" and source[cursor] in {"'", '"'}:
+        module = _read_string(source, cursor, limit)
+        return (module[0], None) if module is not None else None
+    if keyword == "import" and source[cursor] in {"(", "."}:
+        return None
+    if keyword == "export" and source[cursor] not in {"{", "*"}:
+        return None
+
+    clause_start = cursor
+    depths = {"{": 0, "[": 0, "(": 0}
+    closing = {"}": "{", "]": "[", ")": "("}
+    while cursor < limit:
+        cursor = _skip_space_and_comments(source, cursor, limit)
+        if cursor >= limit:
+            return None
+        character = source[cursor]
+        if character == ";" and not any(depths.values()):
+            return None
+        if character in depths:
+            depths[character] += 1
+            cursor += 1
+            continue
+        if character in closing:
+            opener = closing[character]
+            if depths[opener] == 0:
+                return None
+            depths[opener] -= 1
+            cursor += 1
+            continue
+        if character in {"'", '"', "\x60"}:
+            return None
+        identifier = re.match(r"[A-Za-z_$][\w$]*", source[cursor:limit])
+        if identifier is None:
+            cursor += 1
+            continue
+        word = identifier.group(0)
+        word_start = cursor
+        cursor += identifier.end()
+        if any(depths.values()):
+            continue
+        if word in {"import", "export"}:
+            return None
+        if word != "from":
+            continue
+        module_start = _skip_space_and_comments(source, cursor, limit)
+        if module_start >= limit or source[module_start] not in {"'", '"'}:
+            return None
+        module = _read_string(source, module_start, limit)
+        if module is None or not module[0]:
+            return None
+        return module[0], source[clause_start:word_start]
+    return None
+
+
+def _append_import_records(result: ParseResult, module: str, clause: str | None, line: int) -> None:
+    if clause is None:
+        result.imports.append(ImportRecord(module, None, None, line, module.startswith(".")))
+        return
+    code_positions = _code_positions(clause)
+    what = " ".join(
+        "".join(
+            character if code_positions[index] else " " for index, character in enumerate(clause)
+        )
+        .strip()
+        .split()
+    )
+    if what.startswith("type "):
+        what = what.removeprefix("type ").lstrip()
+    if what.startswith("{") and what.endswith("}"):
+        for item in what[1:-1].split(","):
+            bits = item.strip().split(" as ")
+            if bits and bits[0]:
+                result.imports.append(
+                    ImportRecord(
+                        module,
+                        bits[0],
+                        bits[1] if len(bits) > 1 else None,
+                        line,
+                        module.startswith("."),
+                    )
+                )
+    elif what.startswith("*"):
+        alias = what.split(" as ")[-1].strip()
+        result.imports.append(ImportRecord(module, "*", alias, line, module.startswith(".")))
+    else:
+        default_name = what.split(",", 1)[0].strip()
+        if default_name:
+            result.imports.append(
+                ImportRecord(module, "default", default_name, line, module.startswith("."))
+            )
+
+
+def _skip_static_import_trivia(source: str, cursor: int, limit: int) -> int:
+    while cursor < limit:
+        if source[cursor] in " \t\f\v":
+            cursor += 1
+        elif source.startswith("/*", cursor):
+            end = source.find("*/", cursor + 2, limit)
+            if end == -1:
+                return limit
+            cursor = end + 2
+        else:
+            break
+    return cursor
+
+
+def _skip_space_and_comments(source: str, cursor: int, limit: int) -> int:
+    while cursor < limit:
+        if source[cursor].isspace():
+            cursor += 1
+        elif source.startswith("//", cursor):
+            newline = source.find("\n", cursor + 2, limit)
+            cursor = limit if newline == -1 else newline + 1
+        elif source.startswith("/*", cursor):
+            end = source.find("*/", cursor + 2, limit)
+            cursor = limit if end == -1 else end + 2
+        else:
+            break
+    return cursor
+
+
+def _read_string(source: str, start: int, limit: int) -> tuple[str, int] | None:
+    quote = source[start]
+    cursor = start + 1
+    while cursor < limit:
+        character = source[cursor]
+        if character in {"\n", "\r"}:
+            return None
+        if character == "\\":
+            cursor += 2
+            continue
+        if character == quote:
+            return source[start + 1 : cursor], cursor + 1
+        cursor += 1
+    return None
+
+
+def _code_positions(source: str) -> bytearray:
+    positions = bytearray(b"\x01") * len(source)
+    cursor = 0
+    while cursor < len(source):
+        if source.startswith("//", cursor):
+            end = source.find("\n", cursor + 2)
+            end = len(source) if end == -1 else end
+            positions[cursor:end] = b"\x00" * (end - cursor)
+            cursor = end
+        elif source.startswith("/*", cursor):
+            end = source.find("*/", cursor + 2)
+            end = len(source) if end == -1 else end + 2
+            positions[cursor:end] = b"\x00" * (end - cursor)
+            cursor = end
+        elif source[cursor] in {"'", '"', "\x60"}:
+            quote = source[cursor]
+            end = cursor + 1
+            while end < len(source):
+                if source[end] == "\\":
+                    end += 2
+                    continue
+                end += 1
+                if source[end - 1] == quote:
+                    break
+            positions[cursor:end] = b"\x00" * (end - cursor)
+            cursor = end
+        else:
+            cursor += 1
+    return positions
