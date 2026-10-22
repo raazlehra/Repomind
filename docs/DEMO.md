@@ -26,6 +26,10 @@ Set-Location "C:\path\to\Repomind"
 
 For the current beta wheel, the version command should report `RepoMind 2.0.0b11`.
 
+Release-candidate maintainers validating a local b12 wheel should instead see
+`RepoMind 2.0.0b12`. No public b12 download should be shown until a b12 GitHub Release actually
+exists.
+
 ## Demo flow
 
 ### 1. Build the local index
@@ -61,6 +65,10 @@ completeness, lower-bound, and truncation fields shown in the sanitized sample r
 Explain that RepoMind does not run the recommended commands. A developer or trusted agent must
 review the evidence, verify each command and working directory, and decide what to execute.
 Confidence labels summarize static evidence; they are not probabilities or correctness claims.
+
+With a locally built b12 candidate and the optional Tree-sitter extra, a maintainer may also show
+source-anchored `.json`/`.jsonl` fixture relationships. State explicitly that wrapper-based data
+flow remains unsupported, coverage is unknown, and the recommended npm command is not executed.
 
 For a compact example with verified output fields, see
 [SAMPLE_TEST_IMPACT_REPORT.md](SAMPLE_TEST_IMPACT_REPORT.md).

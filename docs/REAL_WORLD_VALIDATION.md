@@ -4,6 +4,23 @@ This workflow collects reproducible evidence from real repositories without stor
 
 Use it when beta testers want to measure how RepoMind performs on their own repositories and share a sanitized result.
 
+## 2026-10-23 pinned Plumbline candidate validation
+
+The installed `2.0.0b12` candidate wheel with the optional Tree-sitter extra was validated
+against public Plumbline PR #98 commit
+`c7adfffe55c41cdb6aeab8a1e09d233b89bc47ab`. The static run indexed 123 files, including
+19 JSONL files, with zero parse errors. It found the three expected source-anchored redstamp
+fixture relationships at lines 409, 410, and 416 with confidences 1.0, 1.0, and 0.9.
+
+Each fixture test-impact report included `test/redstamp-adapter.test.mjs` as structurally
+related with `coverage=unknown` and recommended the existing broad `npm run test` command.
+A separate unrelated JSONL control excluded that redstamp test. The wrapper-based
+`corpus(...)` path in `test/control.test.mjs` intentionally remained unsupported and produced
+no invented fixture edge. No Plumbline npm script or external test suite was executed.
+
+This is maintainer-run release-candidate evidence, not independent beta-tester feedback, runtime
+coverage, a calibrated confidence claim, or a guarantee for other repositories.
+
 ## Safety and privacy
 
 Do not include proprietary source code, API keys, credentials, private keys, tokens, customer data, or internal URLs in validation reports.

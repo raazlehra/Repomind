@@ -4,6 +4,30 @@ This remains a conservative checklist: checked items have evidence for the state
 unchecked items still require external, manual, or broader validation. Publishing b11 does not
 automatically complete the remaining launch work.
 
+## 2026-10-23 b12 candidate preparation status
+
+- [x] Verified base - canonical `main` was
+  `d3a9659d16c8f9cd23e77c753ffab739cce19ff4`; PRs #8, #9, and #10 were merged.
+- [x] Candidate metadata - source/runtime metadata declare unpublished `2.0.0b12`; b11
+  publication records and download hashes remain unchanged.
+- [x] Local release gates - 326 tests passed; 16 Windows symlink tests skipped for missing
+  privilege and require Linux CI coverage. Ruff, mypy, build, artifact inspection, diff check,
+  and base/Tree-sitter installed-wheel smokes passed on Python 3.12.14.
+- [x] Upgrade lifecycle - the checksum-verified public b11 wheel upgraded to the local b12
+  candidate with schema, repository metadata, manual memory, uninstall/reinstall, and forced
+  rebuild behavior preserved as documented.
+- [x] External static validation - the installed b12 Tree-sitter wheel passed the pinned
+  Plumbline checks without executing npm scripts; this is maintainer-run evidence, not
+  independent customer validation or runtime coverage.
+- [x] Exact candidate CI - PASS for commit
+  `6f40eab8149774e7ec2bdbd9988c37043cea5228`: [GitHub Actions run `39847039359`](https://github.com/raazlehra/Repomind/actions/runs/39847039359)
+  passed `tests (3.11)`, `tests (3.12)`, `tests (3.13)`, `quality`, and
+  `windows-wheel-smoke`.
+- [ ] Publication - PENDING explicit owner approval; no b12 tag, GitHub Release, asset upload,
+  website update, or outreach has occurred.
+- [ ] Independent tester feedback - PENDING; maintainer-run Plumbline validation does not satisfy
+  this launch requirement.
+
 ## 2026-10-10 b11 publication status
 
 - [x] Version/tag/prerelease - `v2.0.0b11` is published as a GitHub prerelease, not stable v2.0.0.

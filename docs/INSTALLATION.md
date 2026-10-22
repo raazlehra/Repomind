@@ -77,6 +77,11 @@ RepoMind project itself:
 - Without the Tree-sitter packages, built-in deterministic parsers remain active. Tree-sitter is
   an optional source of declaration spans, not a requirement for normal indexing or retrieval.
 
+In the unpublished b12 candidate, tightly constrained source-anchored `.json`/`.jsonl`
+fixture-reference analysis also requires the Tree-sitter extra. It does not follow arbitrary
+wrapper-based data flow, does not execute repository scripts, and provides structural test-impact
+evidence rather than runtime coverage. The published b11 wheel does not contain this b12 change.
+
 `repomind doctor <repository>` reports these optional capabilities as notices rather than making
 them mandatory.
 
@@ -98,10 +103,11 @@ resulting wheel in a separate disposable environment:
 
 ```powershell
 python -m build
-python -m pip install "dist\repomind-2.0.0b11-py3-none-any.whl"
+python -m pip install "dist\repomind-2.0.0b12-py3-none-any.whl"
 ```
 
-Building locally does not publish a release. Use the GitHub Releases page for published assets.
+Building locally does not publish a release. A locally built b12 candidate must not be described
+as the published b11 artifact. Use the GitHub Releases page for published assets.
 
 ## Initialize a repository
 
@@ -144,6 +150,20 @@ downloaded, checksum-verified, installed, and smoke-tested. The full b10-to-fina
 lifecycle sequence was not repeated. The lifecycle evidence is therefore limited to the exact
 b10-to-b11 candidate path on Windows/Python 3.12.14; Linux and Windows installed-wheel CI checks
 for the final release commit passed separately. This is not a blanket compatibility promise.
+
+## b11 to b12 candidate validation
+
+On 2026-10-23, release preparation used the authentic b11 GitHub Release wheel only after its
+SHA-256 matched
+`3202f593084a5f13cbe68c21bc7a2bc3c6207671a28e10303267bf0b0594ba9f`. Upgrading that
+wheel to the locally built `2.0.0b12` candidate preserved schema 2, repository identity,
+creation metadata, configuration, and manual memory. Uninstall/reinstall preserved repository
+data, while `init --force` preserved configuration and removed database-only manual memory as
+documented. Recommended test commands were not executed.
+
+This is pre-release evidence for a local candidate, not an instruction to use a guessed b12
+download URL. After publication, verify the final public wheel hash independently and repeat the
+installed-wheel checks before replacing these candidate-specific statements with release claims.
 
 ## Uninstall and reinstall
 
