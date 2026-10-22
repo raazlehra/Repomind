@@ -54,6 +54,8 @@ def create_repository(root: Path) -> Path:
     repository = root / "Synthetic Repository With Spaces"
     (repository / "src").mkdir(parents=True)
     (repository / "tests").mkdir()
+    (repository / "test").mkdir()
+    (repository / "corpus").mkdir()
     (repository / "src" / "app.py").write_text(
         "def greeting(name: str) -> str:\n    return f'Hello, {name}'\n",
         encoding="utf-8",
@@ -63,19 +65,52 @@ def create_repository(root: Path) -> Path:
         "    assert greeting('RepoMind') == 'Hello, RepoMind'\n",
         encoding="utf-8",
     )
+    (repository / "package.json").write_text(
+        json.dumps({"scripts": {"test": "node --test test/*.test.mjs"}}),
+        encoding="utf-8",
+    )
+    (repository / "corpus" / "fixture.jsonl").write_text(
+        "# fixture content is indexed but never executed\n",
+        encoding="utf-8",
+    )
+    (repository / "test" / "fixture.test.mjs").write_text(
+        """import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const CORPUS = join(dirname(fileURLToPath(import.meta.url)), '..', 'corpus');
+readFileSync(join(CORPUS, 'fixture.jsonl'), 'utf8');
+""",
+        encoding="utf-8",
+    )
     run(["git", "init", "--quiet"], cwd=repository)
     run(["git", "config", "user.email", "release-smoke@example.invalid"], cwd=repository)
     run(["git", "config", "user.name", "RepoMind Release Smoke"], cwd=repository)
-    run(["git", "add", "src/app.py", "tests/test_app.py"], cwd=repository)
+    run(
+        [
+            "git",
+            "add",
+            "src/app.py",
+            "tests/test_app.py",
+            "package.json",
+            "corpus/fixture.jsonl",
+            "test/fixture.test.mjs",
+        ],
+        cwd=repository,
+    )
     run(["git", "commit", "--quiet", "-m", "fixture"], cwd=repository)
     return repository
 
 
-def execute_smoke(wheel: Path, root: Path) -> dict[str, object]:
+def execute_smoke(
+    wheel: Path, root: Path, *, treesitter: bool = False
+) -> dict[str, object]:
     environment = root / "Installed Wheel Environment With Spaces"
     venv.EnvBuilder(with_pip=True, clear=True).create(environment)
     python = environment_python(environment)
     cli = environment_cli(environment)
+    install_target = (
+        f"repomind[treesitter] @ {wheel.as_uri()}" if treesitter else str(wheel)
+    )
     run(
         [
             str(python),
@@ -84,7 +119,7 @@ def execute_smoke(wheel: Path, root: Path) -> dict[str, object]:
             "install",
             "--disable-pip-version-check",
             "--no-input",
-            str(wheel),
+            install_target,
         ],
         cwd=root,
         timeout=300,
@@ -153,6 +188,20 @@ def execute_smoke(wheel: Path, root: Path) -> dict[str, object]:
         ],
         cwd=root,
     )
+    fixture_impact = json_command(
+        [
+            str(python),
+            "-m",
+            "repomind",
+            "test-impact",
+            "corpus/fixture.jsonl",
+            "-C",
+            str(repository),
+            "--format",
+            "json",
+        ],
+        cwd=root,
+    )
     if status.get("index_healthy") is not True:
         raise RuntimeError("installed CLI did not report a healthy index")
     if doctor.get("index_health") != "healthy":
@@ -161,6 +210,18 @@ def execute_smoke(wheel: Path, root: Path) -> dict[str, object]:
         raise RuntimeError("installed CLI context returned no relevant files")
     if impact.get("schema_version") != "repomind.test-impact.v1":
         raise RuntimeError("installed CLI test-impact returned an unexpected schema")
+
+    fixture_edges = [
+        evidence
+        for test in fixture_impact.get("existing_tests", [])
+        if test.get("file") == "test/fixture.test.mjs"
+        for evidence in test.get("evidence", [])
+        if evidence.get("relationship") == "fixture-reference"
+    ]
+    if treesitter and not fixture_edges:
+        raise RuntimeError("Tree-sitter wheel smoke found no fixture-reference edge")
+    if not treesitter and fixture_edges:
+        raise RuntimeError("base wheel fallback invented a fixture-reference edge")
 
     probe_script = Path(__file__).with_name("mcp_stdio_probe.py").resolve()
     mcp = json_command(
@@ -187,6 +248,7 @@ def execute_smoke(wheel: Path, root: Path) -> dict[str, object]:
         "doctor_checks": len(doctor["checks"]),
         "context": "ok",
         "test_impact": "ok",
+        "fixture_analysis": "tree-sitter" if treesitter else "safe lexical fallback",
         "recommended_commands_executed": False,
         "mcp": mcp,
     }
@@ -196,15 +258,22 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Smoke-test a built RepoMind wheel")
     parser.add_argument("--wheel", type=Path, required=True)
     parser.add_argument("--work-dir", type=Path)
+    parser.add_argument(
+        "--treesitter",
+        action="store_true",
+        help="install and verify the optional Tree-sitter fixture backend",
+    )
     args = parser.parse_args()
     wheel = resolve_wheel(args.wheel)
 
     if args.work_dir is not None:
         args.work_dir.mkdir(parents=True, exist_ok=True)
-        result = execute_smoke(wheel, args.work_dir.resolve())
+        result = execute_smoke(
+            wheel, args.work_dir.resolve(), treesitter=args.treesitter
+        )
     else:
         with tempfile.TemporaryDirectory(prefix="repomind release smoke ") as temporary:
-            result = execute_smoke(wheel, Path(temporary))
+            result = execute_smoke(wheel, Path(temporary), treesitter=args.treesitter)
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
 

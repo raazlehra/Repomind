@@ -89,6 +89,21 @@ def rebuild_dependency_graph(database: IndexDatabase) -> None:
         source_file_id = int(reference["file_id"])
         target_text = str(reference["target"])
         candidates = _symbol_candidates(target_text, by_exact, by_name)
+        if str(reference["kind"]) == "fixture-reference":
+            target_file_id = path_to_id.get(target_text)
+            if target_file_id is None or target_file_id == source_file_id:
+                continue
+            _insert_dependency(
+                connection,
+                source_file_id,
+                target_file_id,
+                None,
+                None,
+                "fixture-reference",
+                float(reference["confidence"]),
+                f"static:{reference['evidence']}",
+            )
+            continue
         prefer_imported = "." in target_text and not target_text.startswith(("self.", "this."))
         chosen = _choose_symbol(
             candidates,

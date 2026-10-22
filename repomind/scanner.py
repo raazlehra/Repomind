@@ -41,7 +41,17 @@ SOURCE_EXTENSIONS: dict[str, str] = {
     ".bash": "shell",
     ".sql": "sql",
 }
-CONFIG_EXTENSIONS = {".json", ".toml", ".yaml", ".yml", ".ini", ".cfg", ".xml", ".properties"}
+CONFIG_EXTENSIONS = {
+    ".json",
+    ".jsonl",
+    ".toml",
+    ".yaml",
+    ".yml",
+    ".ini",
+    ".cfg",
+    ".xml",
+    ".properties",
+}
 DOC_EXTENSIONS = {".md", ".mdx", ".rst", ".adoc"}
 SPECIAL_CONFIGS = {
     "Dockerfile",

@@ -65,6 +65,8 @@ jobs:
         run: python scripts/verify_release_artifacts.py --dist-dir dist
       - name: Smoke-test the installed wheel
         run: python scripts/installed_wheel_smoke.py --wheel dist
+      - name: Smoke-test the optional Tree-sitter backend
+        run: python scripts/installed_wheel_smoke.py --wheel dist --treesitter
 
   windows-wheel-smoke:
     name: windows-wheel-smoke
@@ -89,3 +91,5 @@ jobs:
         run: python scripts/verify_release_artifacts.py --dist-dir dist
       - name: Smoke-test the installed wheel
         run: python scripts/installed_wheel_smoke.py --wheel dist
+      - name: Smoke-test the optional Tree-sitter backend
+        run: python scripts/installed_wheel_smoke.py --wheel dist --treesitter

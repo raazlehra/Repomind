@@ -88,7 +88,7 @@ class PlainTextParser:
     def parse(self, path: Path, relative_path: str, source: str) -> ParseResult:
         kind = (
             "configuration"
-            if path.suffix.lower() in {".json", ".toml", ".yaml", ".yml", ".ini", ".xml"}
+            if path.suffix.lower() in {".json", ".jsonl", ".toml", ".yaml", ".yml", ".ini", ".xml"}
             else "text"
         )
         return ParseResult(summary=kind)

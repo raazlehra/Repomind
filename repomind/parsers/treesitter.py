@@ -6,6 +6,7 @@ from typing import Any
 
 from repomind.models import ParseResult, Symbol
 from repomind.parsers.javascript import JavaScriptParser
+from repomind.parsers.javascript_fixtures import extract_fixture_references
 
 
 class TreeSitterJavaScriptParser:
@@ -41,6 +42,12 @@ class TreeSitterJavaScriptParser:
         result = self._lexical.parse(path, relative_path, source)
         encoded = source.encode("utf-8")
         tree = self._parser.parse(encoded)
+        try:
+            fixture_edges = extract_fixture_references(tree.root_node, encoded, relative_path)
+        except Exception:
+            # Optional relationship extraction must not suppress normal lexical indexing.
+            fixture_edges = []
+        result.edges.extend(fixture_edges)
         symbols: list[Symbol] = []
         self._walk(tree.root_node, encoded, path, symbols, parent=None)
         if symbols:
