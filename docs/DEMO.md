@@ -24,11 +24,10 @@ Then open Windows PowerShell at the safe repository root:
 Set-Location "C:\path\to\Repomind"
 ```
 
-For the current beta wheel, the version command should report `RepoMind 2.0.0b11`.
-
-Release-candidate maintainers validating a local b12 wheel should instead see
-`RepoMind 2.0.0b12`. No public b12 download should be shown until a b12 GitHub Release actually
-exists.
+The version command must match the wheel selected from GitHub Releases. The historical b11 wheel
+reports `RepoMind 2.0.0b11`; a local or actually published b12 wheel reports
+`RepoMind 2.0.0b12`. Do not show a public b12 download unless a `v2.0.0b12` GitHub Release and
+that exact asset actually exist.
 
 ## Demo flow
 
@@ -66,7 +65,7 @@ Explain that RepoMind does not run the recommended commands. A developer or trus
 review the evidence, verify each command and working directory, and decide what to execute.
 Confidence labels summarize static evidence; they are not probabilities or correctness claims.
 
-With a locally built b12 candidate and the optional Tree-sitter extra, a maintainer may also show
+With `2.0.0b12` and the optional Tree-sitter extra, a maintainer may also show
 source-anchored `.json`/`.jsonl` fixture relationships. State explicitly that wrapper-based data
 flow remains unsupported, coverage is unknown, and the recommended npm command is not executed.
 

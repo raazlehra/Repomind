@@ -1,23 +1,24 @@
 # Release Process
 
-The current public prerelease is
+At the start of b12 preparation, the published public prerelease was
 [`v2.0.0b11`](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b11), published on
-2026-10-10 as a public hardening beta. It is not stable v2.0.0. GitHub Release artifacts are the
-authoritative public distribution:
+2026-10-10 as a public hardening beta. It is not stable v2.0.0. This is a historical release
+record; the [GitHub Releases](https://github.com/raazlehra/Repomind/releases) page is authoritative
+for current publication state and public assets:
 
 - `repomind-2.0.0b11-py3-none-any.whl` — SHA-256
   `3202f593084a5f13cbe68c21bc7a2bc3c6207671a28e10303267bf0b0594ba9f`
 - `repomind-2.0.0b11.tar.gz` — SHA-256
   `8814e9ab9ca134fc7b34ae8b1f91030490411a29c39c8af5c660bb8dacb24938`
 
-The repository is preparing an unpublished `2.0.0b12` candidate from verified main commit
-`d3a9659d16c8f9cd23e77c753ffab739cce19ff4`. The candidate contains the merged scope from
+The `2.0.0b12` preparation began from verified main commit
+`d3a9659d16c8f9cd23e77c753ffab739cce19ff4`. It contains the merged scope from
 PRs #8, #9, and #10: Node.js built-in `.mjs` test recognition and broad existing npm test-script
 recommendation, bounded multiline JavaScript static imports, `.jsonl` configuration indexing,
 and optional Tree-sitter-backed source-anchored `.json`/`.jsonl` fixture references. It remains
 static analysis: no recommended repository commands are executed, coverage is unknown, and
-wrapper-based fixture data flow remains unsupported. This candidate is not a tag, published
-release, or replacement for the b11 download links above.
+wrapper-based fixture data flow remains unsupported. This document does not assert that b12 has
+been published; verify publication and assets on the GitHub Releases page.
 
 The process below prepares a future candidate without publishing it. Replace placeholders with
 the candidate version and a suitable baseline release; do not infer that a later release exists.
@@ -117,8 +118,16 @@ On 2026-10-23, the unpublished b12 candidate was validated locally on Windows wi
   coverage, a negative control excluding the redstamp test, and unsupported wrapper flow
   remaining unsupported. No Plumbline npm script was executed.
 
-These are candidate artifacts, not published release assets. Exact candidate-commit CI and owner
-approval are still required before any tag, release, asset upload, or website update.
+These are historical candidate artifacts, not published release assets and not checksums for a
+later build. Required CI passed all five jobs on both verified commits:
+
+- final candidate commit `ce8b16001ff9e8967bd1206ee442490c7cbde695` —
+  [GitHub Actions run `39850116897`](https://github.com/raazlehra/Repomind/actions/runs/39850116897);
+- post-merge main commit `696e3cb5d01411950474cad410494f9420800a11` —
+  [GitHub Actions run `39851299675`](https://github.com/raazlehra/Repomind/actions/runs/39851299675).
+
+Tag creation, GitHub Release creation, asset upload, and website update remain separate
+owner-controlled actions. This record does not assert that any of them has occurred.
 
 ## Future publication gate
 

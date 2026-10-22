@@ -4,12 +4,13 @@ This remains a conservative checklist: checked items have evidence for the state
 unchecked items still require external, manual, or broader validation. Publishing b11 does not
 automatically complete the remaining launch work.
 
-## 2026-10-23 b12 candidate preparation status
+## 2026-10-23 b12 pre-publication preparation record
 
 - [x] Verified base - canonical `main` was
   `d3a9659d16c8f9cd23e77c753ffab739cce19ff4`; PRs #8, #9, and #10 were merged.
-- [x] Candidate metadata - source/runtime metadata declare unpublished `2.0.0b12`; b11
-  publication records and download hashes remain unchanged.
+- [x] Candidate metadata - source/runtime metadata declare `2.0.0b12`; this preparation record
+  does not assert publication. Historical b11 publication records and download hashes remain
+  unchanged.
 - [x] Local release gates - 326 tests passed; 16 Windows symlink tests skipped for missing
   privilege and require Linux CI coverage. Ruff, mypy, build, artifact inspection, diff check,
   and base/Tree-sitter installed-wheel smokes passed on Python 3.12.14.
@@ -19,12 +20,17 @@ automatically complete the remaining launch work.
 - [x] External static validation - the installed b12 Tree-sitter wheel passed the pinned
   Plumbline checks without executing npm scripts; this is maintainer-run evidence, not
   independent customer validation or runtime coverage.
-- [x] Exact candidate CI - PASS for commit
-  `6f40eab8149774e7ec2bdbd9988c37043cea5228`: [GitHub Actions run `39847039359`](https://github.com/raazlehra/Repomind/actions/runs/39847039359)
+- [x] Exact candidate CI - PASS for final candidate commit
+  `ce8b16001ff9e8967bd1206ee442490c7cbde695`: [GitHub Actions run `39850116897`](https://github.com/raazlehra/Repomind/actions/runs/39850116897)
   passed `tests (3.11)`, `tests (3.12)`, `tests (3.13)`, `quality`, and
   `windows-wheel-smoke`.
-- [ ] Publication - PENDING explicit owner approval; no b12 tag, GitHub Release, asset upload,
-  website update, or outreach has occurred.
+- [x] Post-merge CI - PASS for main commit
+  `696e3cb5d01411950474cad410494f9420800a11`: [GitHub Actions run `39851299675`](https://github.com/raazlehra/Repomind/actions/runs/39851299675)
+  passed the same five required jobs.
+- [ ] Publication checkpoint - at merged commit
+  `696e3cb5d01411950474cad410494f9420800a11`, no b12 tag, GitHub Release, asset upload,
+  website update, or outreach had occurred. Current publication state must be checked on GitHub;
+  each publication action requires separate owner approval.
 - [ ] Independent tester feedback - PENDING; maintainer-run Plumbline validation does not satisfy
   this launch requirement.
 
