@@ -38,9 +38,9 @@ RepoMind is designed for static local analysis. It should not execute repository
 
 ## Installation
 
-The current published beta is
-[`v2.0.0b11`](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b11). Download its exact
-wheel from that GitHub Release.
+Select a beta that is actually published on this repository's
+[GitHub Releases](https://github.com/raazlehra/Repomind/releases) page, then download its exact
+wheel. Do not infer publication from source metadata or construct a guessed release URL.
 
 Do not use plain `pip install repomind`. The package with that name on PyPI is a different
 project.
@@ -51,7 +51,7 @@ wheel:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install "C:\Downloads\repomind-2.0.0b11-py3-none-any.whl"
+python -m pip install "C:\Downloads\repomind-<published-version>-py3-none-any.whl"
 ```
 
 Verify both entry points:
@@ -62,7 +62,8 @@ repomind --help
 python -m repomind --help
 ```
 
-The expected version for the currently published beta is:
+The reported version must match the release asset you selected. For example, the historical b11
+wheel reports:
 
 ```text
 RepoMind 2.0.0b11
@@ -73,14 +74,14 @@ Contributors who intentionally need an editable source install should follow
 See [Installation and lifecycle](INSTALLATION.md) for optional extras, local-build validation,
 upgrade scope, and uninstall/reinstall behavior.
 
-### Unpublished b12 candidate testing
+### b12 validation and publication boundary
 
-Release maintainers may separately validate a locally built `2.0.0b12` wheel. That candidate is
-not the current public beta and must not be installed from a guessed GitHub Release URL. Its new
-`.json`/`.jsonl` fixture-reference evidence requires installation from the exact local wheel with
-the `[treesitter]` extra. The evidence is structural, coverage remains unknown, unsupported
-wrapper-based data flow must remain unsupported, and recommended npm commands must not be run as
-part of the static-analysis validation.
+Release maintainers may validate a locally built `2.0.0b12` wheel, but a local build is not a
+published asset. Before publication, do not install b12 from a guessed GitHub Release URL. After a
+`v2.0.0b12` release actually exists, use only its attached wheel and published checksum. The new
+`.json`/`.jsonl` fixture-reference evidence requires the `[treesitter]` extra. The evidence is
+structural, coverage remains unknown, unsupported wrapper-based data flow must remain unsupported,
+and recommended npm commands must not be run as part of the static-analysis validation.
 
 ## Test workflow
 

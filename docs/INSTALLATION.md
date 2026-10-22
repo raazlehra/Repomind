@@ -1,8 +1,8 @@
 # Installation and Lifecycle
 
 RepoMind is distributed through [GitHub Releases](https://github.com/raazlehra/Repomind/releases).
-The current published beta is
-[`v2.0.0b11`](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b11).
+That page is authoritative for which beta versions and assets have actually been published.
+Source metadata or candidate documentation alone does not establish publication.
 
 > [!WARNING]
 > Do not run plain `pip install repomind`. The `repomind` name on PyPI currently resolves to
@@ -11,7 +11,12 @@ The current published beta is
 
 ## Install a published release on Windows
 
-The GitHub Release wheel is authoritative. The published b11 wheel is:
+The GitHub Release wheel is authoritative. Select an asset that is actually attached to a release;
+do not construct or guess a download URL. Copy the exact SHA-256 published for that asset, and do
+not reuse a checksum from another version or build.
+
+The published b11 wheel below is a historical, checksum-verified example. For b12, substitute its
+filename, URL, and checksum only after the `v2.0.0b12` GitHub Release actually exists:
 
 ```text
 https://github.com/raazlehra/Repomind/releases/download/v2.0.0b11/repomind-2.0.0b11-py3-none-any.whl
@@ -55,11 +60,11 @@ python3 -m venv "$HOME/.local/share/repomind-venv"
 
 On macOS, compare `shasum -a 256 <wheel>` with the GitHub Release hash before installing.
 
-RepoMind requires Python 3.11+. The b11 release matrix explicitly validates Python
-3.11–3.13. Other Python versions are not claimed as release-tested unless listed in the release
-notes. Windows installed-wheel release checks use paths containing spaces and run outside the
-source checkout. Linux and Windows installed-wheel checks passed for the b11 release commit in
-the required GitHub Actions workflow.
+RepoMind requires Python 3.11+. The b11 release matrix explicitly validates Python 3.11–3.13;
+the b12 candidate and post-merge source commits passed the same required CI matrix. Other Python
+versions are not claimed as release-tested unless listed in the applicable release notes. Windows
+installed-wheel checks use paths containing spaces and run outside the source checkout. Final
+public-asset verification remains separate from source-commit CI.
 
 ## Optional dependencies
 
@@ -77,7 +82,7 @@ RepoMind project itself:
 - Without the Tree-sitter packages, built-in deterministic parsers remain active. Tree-sitter is
   an optional source of declaration spans, not a requirement for normal indexing or retrieval.
 
-In the unpublished b12 candidate, tightly constrained source-anchored `.json`/`.jsonl`
+In `2.0.0b12`, tightly constrained source-anchored `.json`/`.jsonl`
 fixture-reference analysis also requires the Tree-sitter extra. It does not follow arbitrary
 wrapper-based data flow, does not execute repository scripts, and provides structural test-impact
 evidence rather than runtime coverage. The published b11 wheel does not contain this b12 change.
@@ -106,8 +111,8 @@ python -m build
 python -m pip install "dist\repomind-2.0.0b12-py3-none-any.whl"
 ```
 
-Building locally does not publish a release. A locally built b12 candidate must not be described
-as the published b11 artifact. Use the GitHub Releases page for published assets.
+Building locally does not publish a release. Do not describe any locally built wheel as a
+published asset. Use the GitHub Releases page for published assets and their exact checksums.
 
 ## Initialize a repository
 

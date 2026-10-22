@@ -6,14 +6,16 @@ Index once. Understand everywhere.
 
 RepoMind builds a persistent local index of a codebase, keeps it fresh as files change, and returns task-aware context that coding agents can use for focused discovery. It is not a coding agent, hosted service, embedding store, or replacement for reading source files. It helps agents find the right files, relationships, facts, and risks before they edit.
 
-**Current public beta:** [v2.0.0b11](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b11).
-This is a public prerelease/hardening beta, not stable v2.0.0. Installation requires no approval;
-download the release artifact and follow the [installation guide](docs/INSTALLATION.md). Do not use
-plain `pip install repomind`, because that PyPI distribution name belongs to another project.
+**Public beta downloads:** use only assets attached to this repository's
+[GitHub Releases](https://github.com/raazlehra/Repomind/releases) page. RepoMind releases are
+prerelease/hardening betas, not stable v2.0.0. Follow the
+[installation guide](docs/INSTALLATION.md), and do not use plain `pip install repomind`, because
+that PyPI distribution name belongs to another project.
 
-The source tree currently declares the unpublished `2.0.0b12` release candidate. The b12
-candidate changes are not present in the published b11 wheel, and no b12 tag or GitHub Release
-exists yet.
+The source tree declares `2.0.0b12`. Source metadata does not establish publication: install b12
+only if a `v2.0.0b12` GitHub Release and its exact assets actually exist, and verify the checksum
+published for that specific asset. The published b11 release remains the historical verified
+baseline; its wheel does not contain the b12 changes.
 
 Key capabilities:
 
@@ -68,9 +70,11 @@ repomind --help
 ```
 
 Do **not** use plain `pip install repomind`: that distribution name on PyPI currently resolves
-to a different project. The current published RepoMind beta is
-[`v2.0.0b11`](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b11); install its exact
-wheel from that GitHub Release and verify its published SHA-256. The installed distribution
+to a different project. Select an actually published RepoMind beta from the canonical
+[GitHub Releases](https://github.com/raazlehra/Repomind/releases) page, install its exact wheel,
+and verify the SHA-256 published for that asset. The verified
+[`v2.0.0b11`](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b11) release remains a
+historical example; do not reuse its hash for b12 or any other build. The installed distribution
 identity and the `repomind` CLI command name are related but not interchangeable proof that the
 correct project was installed.
 
@@ -83,7 +87,7 @@ python -m pip install -e ".[dev]"
 The base package includes the local MCP server dependency. The local wheel can be installed
 with `[watch]` or `[treesitter]` extras; this keeps package resolution tied to the downloaded
 artifact instead of the unrelated PyPI project. Without `watchdog`, `repomind watch` is
-unavailable, but retrieval-time freshness checks still work. In the b12 candidate, without
+unavailable, but retrieval-time freshness checks still work. In `2.0.0b12`, without
 compatible Tree-sitter grammars, built-in deterministic JavaScript and TypeScript parsers remain
 active, but bounded JavaScript/TypeScript fixture-reference analysis is disabled. Download and
 checksum-verify the exact GitHub Release wheel as described in
@@ -221,7 +225,7 @@ argument arrays, and repository-relative working directories as data; RepoMind n
 those commands or repository test code. Codex, CI, or a developer must separately review,
 approve, and execute recommendations in an appropriately trusted environment.
 
-The b12 candidate recognizes Node.js built-in `.mjs` test suites, bounded multiline static
+RepoMind `2.0.0b12` recognizes Node.js built-in `.mjs` test suites, bounded multiline static
 imports, and tightly constrained source-anchored `.json`/`.jsonl` fixture references when the
 optional Tree-sitter backend is active. These relationships remain structural evidence, not
 runtime coverage. Wrapper-based fixture data flow remains unsupported.
@@ -394,7 +398,7 @@ python -m benchmarks.run_benchmark --format json --output benchmark.json
 
 The benchmark harness measures indexing duration, incremental reuse, memory validation timing, selected files, output bytes, approximate tokens, retrieval latency, index size, and expected-file recall on small synthetic fixtures. See [BENCHMARKS.md](BENCHMARKS.md).
 
-Current beta.8 validation reported 12/12 expected benchmark files retrieved with mean expected-file recall of 1.000. Benchmark results are fixture measurements, not universal performance or savings claims.
+Historical beta.8 validation reported 12/12 expected benchmark files retrieved with mean expected-file recall of 1.000. Benchmark results are fixture measurements, not universal performance or savings claims.
 
 ## Privacy / Security
 
