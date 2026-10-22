@@ -724,3 +724,77 @@ test('adapter', () => {
         ("node:test", "broad")
     ]
     assert report["recommended_commands"][0]["related_tests"] == []
+
+
+def test_static_fixture_references_preserve_truthful_test_impact_evidence(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "fixture_impact_repo"
+    _write(
+        repo / "package.json",
+        json.dumps({"scripts": {"test": "node --test test/*.test.mjs"}}),
+    )
+    _write(
+        repo / "src" / "adapters" / "redstamp.mjs",
+        "export async function readRedstampAudit() {}\n",
+    )
+    fixture_paths = [
+        "corpus/redstamp/approve-path.checkpoint.json",
+        "corpus/redstamp/approve-path.host-observation.jsonl",
+        "corpus/redstamp/approve-path.jsonl",
+    ]
+    for fixture_path in fixture_paths:
+        _write(repo / fixture_path, "# parser must not validate fixture content\n")
+    _write(repo / "corpus" / "redstamp" / "unrelated.jsonl", "{}\n")
+    _write(
+        repo / "test" / "redstamp-adapter.test.mjs",
+        """import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { readRedstampAudit } from '../src/adapters/redstamp.mjs';
+
+const CORPUS = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..', 'corpus', 'redstamp'
+);
+
+test('fixtures', async () => {
+  const checkpoint = readFileSync(join(CORPUS, 'approve-path.checkpoint.json'), 'utf8');
+  const hosts = readFileSync(join(CORPUS, 'approve-path.host-observation.jsonl'), 'utf8');
+  await readRedstampAudit(join(CORPUS, 'approve-path.jsonl'), checkpoint, hosts);
+});
+""",
+    )
+    Indexer(repo).initialize()
+
+    reports = {path: _analyze(repo, [path]) for path in fixture_paths}
+    unrelated_report = _analyze(repo, ["corpus/redstamp/unrelated.jsonl"])
+
+    for fixture_path, report in reports.items():
+        changed = report["changed_files"][0]
+        assert changed["path"] == fixture_path
+        assert changed["indexed"] is True
+        assert changed["language"] == "config"
+        assert changed["purpose"] == "configuration"
+
+        test = _test_by_path(report, "test/redstamp-adapter.test.mjs")
+        assert test["confidence"] == "high"
+        assert test["structurally_related"] is True
+        assert test["coverage"] == "unknown"
+        assert {
+            evidence["relationship"]
+            for evidence in test["evidence"]
+            if evidence["kind"] == "dependency"
+        } == {"fixture-reference"}
+        assert report["uncovered_areas"] == []
+        assert [
+            (command["framework"], command["scope"], command["related_tests"])
+            for command in report["recommended_commands"]
+        ] == [("node:test", "broad", [])]
+
+    assert not any(
+        item["file"] == "test/redstamp-adapter.test.mjs"
+        and item["confidence"] == "high"
+        for item in unrelated_report["existing_tests"]
+    )

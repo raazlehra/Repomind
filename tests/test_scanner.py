@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from repomind.config import Config
 from repomind.scanner import RepositoryScanner, classify_file
 from repomind.utils import hash_file
@@ -67,3 +69,46 @@ def test_file_hash_changes(tmp_path: Path) -> None:
     before = hash_file(path)
     path.write_text("a = 2")
     assert hash_file(path) != before
+
+
+def test_jsonl_is_indexed_as_plain_configuration_without_content_validation(
+    tmp_path: Path,
+) -> None:
+    fixture = tmp_path / "corpus" / "events.jsonl"
+    fixture.parent.mkdir()
+    fixture.write_text("# comments are allowed by producers\nnot-json\n", encoding="utf-8")
+
+    scanned = {item.path: item for item in RepositoryScanner(tmp_path, Config()).scan()}
+
+    assert classify_file("corpus/events.jsonl") == ("config", "configuration", False)
+    assert scanned["corpus/events.jsonl"].language == "config"
+    assert scanned["corpus/events.jsonl"].purpose == "configuration"
+
+
+def test_jsonl_preserves_ignore_secret_binary_size_and_language_exclusions(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / ".gitignore").write_text("ignored.jsonl\n", encoding="utf-8")
+    (tmp_path / "kept.jsonl").write_text('{"ok":true}\n', encoding="utf-8")
+    (tmp_path / "ignored.jsonl").write_text('{"ignored":true}\n', encoding="utf-8")
+    (tmp_path / "secrets-audit.jsonl").write_text('{"secret":true}\n', encoding="utf-8")
+    (tmp_path / "binary.jsonl").write_bytes(b"abc\x00def")
+    (tmp_path / "oversized.jsonl").write_text("x" * 5_000, encoding="utf-8")
+
+    found = paths(tmp_path, Config(max_file_size=1_024))
+
+    assert found == {"kept.jsonl"}
+    assert "kept.jsonl" not in paths(tmp_path, Config(languages=("python",)))
+
+
+def test_jsonl_symlink_is_not_indexed(tmp_path: Path) -> None:
+    outside = tmp_path.parent / f"{tmp_path.name}-outside.jsonl"
+    outside.write_text('{"outside":true}\n', encoding="utf-8")
+    link = tmp_path / "linked.jsonl"
+    try:
+        link.symlink_to(outside)
+    except OSError as exc:
+        pytest.skip(f"Symlink creation unavailable: {exc}")
+
+    assert link.is_symlink()
+    assert "linked.jsonl" not in paths(tmp_path)

@@ -80,7 +80,16 @@ The base package includes the local MCP server dependency. The local wheel can b
 with `[watch]` or `[treesitter]` extras; this keeps package resolution tied to the downloaded
 artifact instead of the unrelated PyPI project. Without `watchdog`, `repomind watch` is
 unavailable, but retrieval-time freshness checks still work. Without compatible Tree-sitter
-grammars, built-in deterministic JavaScript and TypeScript parsers remain active.
+grammars, built-in deterministic JavaScript and TypeScript parsers remain active, but bounded
+JavaScript/TypeScript fixture-reference analysis is disabled. Download and checksum-verify the
+exact GitHub Release wheel as described in [Installation and lifecycle](docs/INSTALLATION.md),
+then install that local artifact with the optional extra:
+
+```powershell
+& "C:\Tools\RepoMind\Scripts\python.exe" -m pip install "C:\Downloads\repomind-<version>-py3-none-any.whl[treesitter]"
+```
+
+`repomind doctor` reports whether the backend is active.
 
 See [Installation and lifecycle](docs/INSTALLATION.md) for exact Windows and POSIX commands,
 checksum verification, optional-extra syntax, local builds, upgrade behavior, and
