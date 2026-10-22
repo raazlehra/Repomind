@@ -11,8 +11,8 @@ from contextlib import closing
 from pathlib import Path
 from typing import Any
 
-BASELINE_VERSION = "2.0.0b10"
-CANDIDATE_VERSION = "2.0.0b11"
+BASELINE_VERSION = "2.0.0b11"
+CANDIDATE_VERSION = "2.0.0b12"
 MEMORY_KEY = "release.lifecycle.marker"
 MEMORY_VALUE = "Release lifecycle manual memory must survive package upgrades."
 
@@ -335,7 +335,7 @@ def execute(baseline: Path, candidate: Path, root: Path) -> dict[str, object]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate b10-to-candidate package lifecycle")
+    parser = argparse.ArgumentParser(description="Validate b11-to-candidate package lifecycle")
     parser.add_argument("--baseline-wheel", type=Path, required=True)
     parser.add_argument("--candidate-wheel", type=Path, required=True)
     parser.add_argument("--work-dir", type=Path)

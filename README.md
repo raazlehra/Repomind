@@ -11,6 +11,10 @@ This is a public prerelease/hardening beta, not stable v2.0.0. Installation requ
 download the release artifact and follow the [installation guide](docs/INSTALLATION.md). Do not use
 plain `pip install repomind`, because that PyPI distribution name belongs to another project.
 
+The source tree currently declares the unpublished `2.0.0b12` release candidate. The b12
+candidate changes are not present in the published b11 wheel, and no b12 tag or GitHub Release
+exists yet.
+
 Key capabilities:
 
 - Automatic freshness
@@ -79,11 +83,12 @@ python -m pip install -e ".[dev]"
 The base package includes the local MCP server dependency. The local wheel can be installed
 with `[watch]` or `[treesitter]` extras; this keeps package resolution tied to the downloaded
 artifact instead of the unrelated PyPI project. Without `watchdog`, `repomind watch` is
-unavailable, but retrieval-time freshness checks still work. Without compatible Tree-sitter
-grammars, built-in deterministic JavaScript and TypeScript parsers remain active, but bounded
-JavaScript/TypeScript fixture-reference analysis is disabled. Download and checksum-verify the
-exact GitHub Release wheel as described in [Installation and lifecycle](docs/INSTALLATION.md),
-then install that local artifact with the optional extra:
+unavailable, but retrieval-time freshness checks still work. In the b12 candidate, without
+compatible Tree-sitter grammars, built-in deterministic JavaScript and TypeScript parsers remain
+active, but bounded JavaScript/TypeScript fixture-reference analysis is disabled. Download and
+checksum-verify the exact GitHub Release wheel as described in
+[Installation and lifecycle](docs/INSTALLATION.md), then install that local artifact with the
+optional extra after the relevant version is published:
 
 ```powershell
 & "C:\Tools\RepoMind\Scripts\python.exe" -m pip install "C:\Downloads\repomind-<version>-py3-none-any.whl[treesitter]"
@@ -215,6 +220,11 @@ Test-impact is strictly analysis-only. The CLI and MCP return recommended comman
 argument arrays, and repository-relative working directories as data; RepoMind never runs
 those commands or repository test code. Codex, CI, or a developer must separately review,
 approve, and execute recommendations in an appropriately trusted environment.
+
+The b12 candidate recognizes Node.js built-in `.mjs` test suites, bounded multiline static
+imports, and tightly constrained source-anchored `.json`/`.jsonl` fixture references when the
+optional Tree-sitter backend is active. These relationships remain structural evidence, not
+runtime coverage. Wrapper-based fixture data flow remains unsupported.
 
 See the [sanitized sample test-impact report](docs/SAMPLE_TEST_IMPACT_REPORT.md) for a
 reproducible synthetic example and guidance on interpreting evidence and limits.
@@ -412,6 +422,8 @@ See [SECURITY.md](SECURITY.md).
 - RepoMind is not a coding agent and does not edit code.
 - Static analysis can miss dynamic language behavior, reflection, runtime-generated imports, dependency injection, and framework magic.
 - Test-impact recommendations are evidence-based suggestions and are not guaranteed to find every relevant test or risk.
+- Fixture-reference analysis requires the optional Tree-sitter backend, accepts only constrained source-anchored paths, and does not follow arbitrary wrapper-based data flow.
+- Structural test relationships do not establish runtime test coverage; coverage remains unknown unless provided separately.
 - Confidence labels are heuristic summaries of available static evidence, not calibrated probabilities.
 - Truncated collections and lower-bound counts must be interpreted using the report's completeness and truncation metadata.
 - RepoMind does not provide security certification or replace a dedicated security review.

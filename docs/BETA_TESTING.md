@@ -73,6 +73,15 @@ Contributors who intentionally need an editable source install should follow
 See [Installation and lifecycle](INSTALLATION.md) for optional extras, local-build validation,
 upgrade scope, and uninstall/reinstall behavior.
 
+### Unpublished b12 candidate testing
+
+Release maintainers may separately validate a locally built `2.0.0b12` wheel. That candidate is
+not the current public beta and must not be installed from a guessed GitHub Release URL. Its new
+`.json`/`.jsonl` fixture-reference evidence requires installation from the exact local wheel with
+the `[treesitter]` extra. The evidence is structural, coverage remains unknown, unsupported
+wrapper-based data flow must remain unsupported, and recommended npm commands must not be run as
+part of the static-analysis validation.
+
 ## Test workflow
 
 Run RepoMind against your own project, not the RepoMind checkout:

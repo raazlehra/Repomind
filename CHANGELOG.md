@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.0.0b12 - Unreleased candidate
+
+- Recognized Node.js built-in `.mjs` test suites and recommended an existing broad
+  `npm run test` command without executing repository scripts.
+- Recognized bounded multiline JavaScript static imports to improve direct import and
+  dependency evidence.
+- Indexed `.jsonl` as configuration and, with the optional Tree-sitter backend, added tightly
+  constrained source-anchored `.json`/`.jsonl` fixture-reference relationships.
+- Preserved analysis-only behavior: test-impact reports structural relationships and unknown
+  coverage, never executes recommended commands, and does not infer unsupported wrapper-based
+  fixture data flow.
+
 ## 2.0.0b11 - 2026-10-10
 
 - Hardened index/cache path containment, rejected reparse points and hardlinked SQLite
