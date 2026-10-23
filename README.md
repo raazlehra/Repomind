@@ -12,10 +12,9 @@ prerelease/hardening betas, not stable v2.0.0. Follow the
 [installation guide](docs/INSTALLATION.md), and do not use plain `pip install repomind`, because
 that PyPI distribution name belongs to another project.
 
-The source tree declares `2.0.0b12`. Source metadata does not establish publication: install b12
-only if a `v2.0.0b12` GitHub Release and its exact assets actually exist, and verify the checksum
-published for that specific asset. The published b11 release remains the historical verified
-baseline; its wheel does not contain the b12 changes.
+The current published public beta is [`v2.0.0b12`](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b12),
+released on 2026-10-23. Download its attached wheel and confirm SHA-256
+`34c751e3ffb893bcc07403d4bdf2f6d1c5154ac04e4afcac92bbdfadcf43b827` before installation. RepoMind b11 remains the historical upgrade baseline.
 
 Key capabilities:
 
@@ -92,7 +91,7 @@ compatible Tree-sitter grammars, built-in deterministic JavaScript and TypeScrip
 active, but bounded JavaScript/TypeScript fixture-reference analysis is disabled. Download and
 checksum-verify the exact GitHub Release wheel as described in
 [Installation and lifecycle](docs/INSTALLATION.md), then install that local artifact with the
-optional extra after the relevant version is published:
+optional extra after downloading and verifying the published wheel:
 
 ```powershell
 & "C:\Tools\RepoMind\Scripts\python.exe" -m pip install "C:\Downloads\repomind-<version>-py3-none-any.whl[treesitter]"
