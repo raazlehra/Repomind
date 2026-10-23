@@ -62,11 +62,10 @@ repomind --help
 python -m repomind --help
 ```
 
-The reported version must match the release asset you selected. For example, the historical b11
-wheel reports:
+The reported version must match the release asset you selected. The published b12 wheel reports:
 
 ```text
-RepoMind 2.0.0b11
+RepoMind 2.0.0b12
 ```
 
 Contributors who intentionally need an editable source install should follow
@@ -74,14 +73,15 @@ Contributors who intentionally need an editable source install should follow
 See [Installation and lifecycle](INSTALLATION.md) for optional extras, local-build validation,
 upgrade scope, and uninstall/reinstall behavior.
 
-### b12 validation and publication boundary
+### b12 release verification and analysis boundaries
 
-Release maintainers may validate a locally built `2.0.0b12` wheel, but a local build is not a
-published asset. Before publication, do not install b12 from a guessed GitHub Release URL. After a
-`v2.0.0b12` release actually exists, use only its attached wheel and published checksum. The new
-`.json`/`.jsonl` fixture-reference evidence requires the `[treesitter]` extra. The evidence is
-structural, coverage remains unknown, unsupported wrapper-based data flow must remain unsupported,
-and recommended npm commands must not be run as part of the static-analysis validation.
+The current published beta is [`v2.0.0b12`](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b12).
+Before installing its attached wheel, verify SHA-256
+`34c751e3ffb893bcc07403d4bdf2f6d1c5154ac04e4afcac92bbdfadcf43b827` and follow [Installation and lifecycle](INSTALLATION.md).
+The `.json`/`.jsonl` source-anchored fixture-reference evidence requires the optional `[treesitter]`
+extra. This is structural evidence, not runtime coverage. Unsupported wrapper-based data flow
+remains unsupported, coverage remains unknown, and RepoMind never executes recommended npm tests.
+The maintainer's public-wheel smoke tests do not substitute for your own repository validation.
 
 ## Test workflow
 

@@ -15,23 +15,22 @@ The GitHub Release wheel is authoritative. Select an asset that is actually atta
 do not construct or guess a download URL. Copy the exact SHA-256 published for that asset, and do
 not reuse a checksum from another version or build.
 
-The published b11 wheel below is a historical, checksum-verified example. For b12, substitute its
-filename, URL, and checksum only after the `v2.0.0b12` GitHub Release actually exists:
+The published b12 wheel is attached to the verified [v2.0.0b12 GitHub prerelease](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b12):
 
 ```text
-https://github.com/raazlehra/Repomind/releases/download/v2.0.0b11/repomind-2.0.0b11-py3-none-any.whl
+https://github.com/raazlehra/Repomind/releases/download/v2.0.0b12/repomind-2.0.0b12-py3-none-any.whl
 ```
 
 Its published SHA-256 is
-`3202f593084a5f13cbe68c21bc7a2bc3c6207671a28e10303267bf0b0594ba9f`.
-Confirm the version and hash on the release page for every later release; do not reuse the b11
+`34c751e3ffb893bcc07403d4bdf2f6d1c5154ac04e4afcac92bbdfadcf43b827`.
+Confirm the version and hash on the release page for every later release; do not reuse the b12
 value for another artifact.
 
 Download the exact wheel, verify it, and install it into a dedicated environment. PowerShell:
 
 ```powershell
-$Wheel = (Resolve-Path "C:\Downloads\repomind-2.0.0b11-py3-none-any.whl").Path
-$Expected = "3202f593084a5f13cbe68c21bc7a2bc3c6207671a28e10303267bf0b0594ba9f"
+$Wheel = (Resolve-Path "C:\Downloads\repomind-2.0.0b12-py3-none-any.whl").Path
+$Expected = "34c751e3ffb893bcc07403d4bdf2f6d1c5154ac04e4afcac92bbdfadcf43b827"
 $Actual = (Get-FileHash -Algorithm SHA256 $Wheel).Hash.ToLowerInvariant()
 if ($Actual -ne $Expected) { throw "RepoMind wheel checksum mismatch" }
 
@@ -48,23 +47,24 @@ elsewhere on `PATH`. The installed distribution metadata name and CLI command ar
 On Linux or another POSIX system with `sha256sum`:
 
 ```bash
-curl -fL -o repomind-2.0.0b11-py3-none-any.whl \
-  https://github.com/raazlehra/Repomind/releases/download/v2.0.0b11/repomind-2.0.0b11-py3-none-any.whl
+curl -fL -o repomind-2.0.0b12-py3-none-any.whl \
+  https://github.com/raazlehra/Repomind/releases/download/v2.0.0b12/repomind-2.0.0b12-py3-none-any.whl
 printf '%s  %s\n' \
-  '3202f593084a5f13cbe68c21bc7a2bc3c6207671a28e10303267bf0b0594ba9f' \
-  'repomind-2.0.0b11-py3-none-any.whl' | sha256sum -c -
+  '34c751e3ffb893bcc07403d4bdf2f6d1c5154ac04e4afcac92bbdfadcf43b827' \
+  'repomind-2.0.0b12-py3-none-any.whl' | sha256sum -c -
 python3 -m venv "$HOME/.local/share/repomind-venv"
-"$HOME/.local/share/repomind-venv/bin/python" -m pip install ./repomind-2.0.0b11-py3-none-any.whl
+"$HOME/.local/share/repomind-venv/bin/python" -m pip install ./repomind-2.0.0b12-py3-none-any.whl
 "$HOME/.local/share/repomind-venv/bin/python" -m repomind --version
 ```
 
 On macOS, compare `shasum -a 256 <wheel>` with the GitHub Release hash before installing.
 
-RepoMind requires Python 3.11+. The b11 release matrix explicitly validates Python 3.11–3.13;
-the b12 candidate and post-merge source commits passed the same required CI matrix. Other Python
-versions are not claimed as release-tested unless listed in the applicable release notes. Windows
-installed-wheel checks use paths containing spaces and run outside the source checkout. Final
-public-asset verification remains separate from source-commit CI.
+RepoMind requires Python 3.11+. For the b12 release, the exact-commit CI passed Linux tests on
+Python 3.11–3.13 plus installed-wheel checks on Linux and Windows. The maintainer also reports
+that the downloaded public b12 wheel passed base and Tree-sitter installed-wheel checks on
+Windows/Python 3.12.14. macOS and Python 3.14 have not been release-validated. Windows checks
+use disposable installation paths containing spaces; local/CI and public-asset validation are
+separate checks.
 
 ## Optional dependencies
 
@@ -166,9 +166,11 @@ creation metadata, configuration, and manual memory. Uninstall/reinstall preserv
 data, while `init --force` preserved configuration and removed database-only manual memory as
 documented. Recommended test commands were not executed.
 
-This is pre-release evidence for a local candidate, not an instruction to use a guessed b12
-download URL. After publication, verify the final public wheel hash independently and repeat the
-installed-wheel checks before replacing these candidate-specific statements with release claims.
+These lifecycle results apply to the locally built b12 candidate. Separately, after publication
+on 2026-10-23 the maintainer reported independent download/checksum checks on the public wheel
+and sdist and successful base and Tree-sitter installed-wheel smokes on Windows/Python 3.12.14.
+This does not establish macOS or Python 3.14 compatibility or a full upgrade lifecycle run
+against the final publicly downloaded b12 wheel.
 
 ## Uninstall and reinstall
 

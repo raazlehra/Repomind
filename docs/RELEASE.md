@@ -1,5 +1,23 @@
 # Release Process
 
+## Current published public beta: v2.0.0b12 (2026-10-23)
+
+RepoMind [`v2.0.0b12`](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b12) is a
+public GitHub **prerelease**, not stable v2.0.0. The tag and final source commit are
+`2227f963ac3b2555e02e92ae3f733ed8f19c8f89`. Exact-commit [CI run `39924500982`](https://github.com/raazlehra/Repomind/actions/runs/39924500982)
+passed all five required checks. The published assets are:
+
+- `repomind-2.0.0b12-py3-none-any.whl` (122,274 bytes) — SHA-256 `34c751e3ffb893bcc07403d4bdf2f6d1c5154ac04e4afcac92bbdfadcf43b827`
+- `repomind-2.0.0b12.tar.gz` (162,885 bytes) — SHA-256 `f4f38d4f94d15f1f42ce9b8bff4c302dda940b4283f4fadfff0145c8c42ac949`
+- `SHA256SUMS.txt` (192 bytes) — SHA-256 `9758cba21dd3c6a7aa4c83b7d8ffe60226ad8d12901f3829d7c81745a96d4ecc`
+
+GitHub's release metadata records these checksums. The maintainer reports downloading the
+public artifacts, independently matching their SHA-256 values, and smoke-testing the public
+wheel on Windows/Python 3.12.14 in both base and Tree-sitter configurations. This does not
+establish independent customer validation, macOS validation, or Python 3.14 validation.
+
+## Historical preparation and b11 baseline
+
 At the start of b12 preparation, the published public prerelease was
 [`v2.0.0b11`](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b11), published on
 2026-10-10 as a public hardening beta. It is not stable v2.0.0. This is a historical release
@@ -17,8 +35,8 @@ PRs #8, #9, and #10: Node.js built-in `.mjs` test recognition and broad existing
 recommendation, bounded multiline JavaScript static imports, `.jsonl` configuration indexing,
 and optional Tree-sitter-backed source-anchored `.json`/`.jsonl` fixture references. It remains
 static analysis: no recommended repository commands are executed, coverage is unknown, and
-wrapper-based fixture data flow remains unsupported. This document does not assert that b12 has
-been published; verify publication and assets on the GitHub Releases page.
+wrapper-based fixture data flow remains unsupported. These notes document the earlier candidate-preparation phase; the published b12 assets are
+recorded above.
 
 The process below prepares a future candidate without publishing it. Replace placeholders with
 the candidate version and a suitable baseline release; do not infer that a later release exists.
@@ -126,8 +144,9 @@ later build. Required CI passed all five jobs on both verified commits:
 - post-merge main commit `696e3cb5d01411950474cad410494f9420800a11` —
   [GitHub Actions run `39851299675`](https://github.com/raazlehra/Repomind/actions/runs/39851299675).
 
-Tag creation, GitHub Release creation, asset upload, and website update remain separate
-owner-controlled actions. This record does not assert that any of them has occurred.
+Tag creation, GitHub Release creation, asset upload, and website update were separate
+owner-controlled actions during candidate preparation. The b12 prerelease has now been
+published; the website update is tracked separately.
 
 ## Future publication gate
 
