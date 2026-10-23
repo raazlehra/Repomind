@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0b12 - Unreleased candidate
+## 2.0.0b12 - 2026-10-23 (Public beta)
 
 - Recognized Node.js built-in `.mjs` test suites and recommended an existing broad
   `npm run test` command without executing repository scripts.
