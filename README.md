@@ -1,6 +1,6 @@
 # RepoMind
 
-Local-first repository intelligence for developers and AI coding agents.
+Local-first repository intelligence for developers.
 
 Index once. Understand everywhere.
 
@@ -179,7 +179,6 @@ Common CLI commands:
 | `repomind audit [path]` | Generate a deterministic repository audit |
 | `repomind watch` | Debounce filesystem changes and refresh proactively |
 | `repomind doctor` | Run actionable diagnostics |
-| `repomind install-codex [path]` | Install the Codex skill and `AGENTS.md` guidance |
 | `repomind mcp` | Run the local MCP server |
 
 Optional `.repomind.toml`:
@@ -222,7 +221,7 @@ limit, and whether it was truncated. JSON uses the stable
 
 Test-impact is strictly analysis-only. The CLI and MCP return recommended command strings,
 argument arrays, and repository-relative working directories as data; RepoMind never runs
-those commands or repository test code. Codex, CI, or a developer must separately review,
+those commands or repository test code. A developer or trusted automation must separately review,
 approve, and execute recommendations in an appropriately trusted environment.
 
 RepoMind `2.0.0b12` recognizes Node.js built-in `.mjs` test suites, bounded multiline static
@@ -342,19 +341,6 @@ Additional basic file recognition:
 
 - Ruby, PHP, Swift, Kotlin, Scala, shell, SQL, common manifests, configuration files, and documentation files.
 
-## Codex Integration
-
-This repository includes `.codex/skills/repomind/SKILL.md`. Install integration into another project with:
-
-```bash
-cd project
-repomind install-codex
-```
-
-This creates the project-local skill and creates or appends a delimited RepoMind section to `AGENTS.md`. Existing content is preserved, and repeated runs are idempotent.
-
-The skill instructs Codex to query RepoMind before broad scanning, use results for file discovery, inspect source before edits, and request deeper detail only when needed.
-
 ## MCP Integration
 
 RepoMind can run as a local MCP server for coding agents:
@@ -372,8 +358,8 @@ Typical MCP flow:
 3. Inspect actual source before editing.
 4. Use `repomind_memory`, `repomind_symbol`, `repomind_dependencies`, `repomind_callers`, `repomind_impact`, `repomind_test_impact`, or `repomind_snippets` when deeper detail is useful.
 
-See [docs/MCP.md](docs/MCP.md) for verified Codex setup, current Copilot CLI and VS Code
-configuration guidance, optional Claude Code guidance, and validation boundaries.
+See [docs/MCP.md](docs/MCP.md) for supported client configuration guidance,
+optional integrations, and validation boundaries.
 
 ## Stats / Metrics
 
