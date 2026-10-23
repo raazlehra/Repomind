@@ -4,7 +4,7 @@ Local-first repository intelligence for developers.
 
 Index once. Understand everywhere.
 
-RepoMind builds a persistent local index of a codebase, keeps it fresh as files change, and returns task-aware context that coding agents can use for focused discovery. It is not a coding agent, hosted service, embedding store, or replacement for reading source files. It helps agents find the right files, relationships, facts, and risks before they edit.
+RepoMind builds a persistent local index of a codebase, keeps it fresh as files change, and returns task-aware context for focused discovery. It is not a code editor, hosted service, embedding store, or replacement for reading source files. It helps developers and connected tools identify relevant files, relationships, facts, and risks before changes are made.
 
 **Public beta downloads:** use only assets attached to this repository's
 [GitHub Releases](https://github.com/raazlehra/Repomind/releases) page. RepoMind releases are
@@ -35,15 +35,15 @@ that client and provider remain separate trust boundaries.
 
 ## What RepoMind Is
 
-RepoMind is a portable repository intelligence layer for developers and AI coding agents. It indexes files, symbols, imports, routes, dependency edges, architecture facts, Git working-tree state, and evidence-backed repository memory into a local SQLite index under `.repomind/`.
+RepoMind is a portable, local repository intelligence layer for developers and compatible tools. It indexes files, symbols, imports, routes, dependency edges, architecture facts, Git working-tree state, and evidence-backed repository memory into a local SQLite index under `.repomind/`.
 
-Agents can query RepoMind through the CLI or MCP to get a compact ContextPack for a task, inspect dependency and caller relationships, retrieve bounded snippets, and reuse durable repository facts with provenance.
+Developers and compatible tools can query RepoMind through the CLI or MCP to get a compact ContextPack for a task, inspect dependency and caller relationships, retrieve bounded snippets, and reuse durable repository facts with provenance.
 
-RepoMind output is guidance for discovery. The working tree remains authoritative, and agents should inspect actual source before making edits.
+RepoMind output is guidance for discovery. The working tree remains authoritative, and source code should be inspected before making edits.
 
 ## Why RepoMind
 
-Large repositories make agents spend time rediscovering the same structure: where tests live, which files define routes, what symbols call each other, whether saved changes made the index stale, and which files are likely relevant to a task.
+Large repositories require repeated discovery of the same structure: where tests live, which files define routes, what symbols call each other, whether saved changes made the index stale, and which files are likely relevant to a task.
 
 RepoMind focuses on reusable, local, deterministic signals:
 
