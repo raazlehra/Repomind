@@ -10,13 +10,17 @@ wheel first by following [INSTALLATION.md](INSTALLATION.md); do not use plain
 
 ## Setup
 
-In an isolated environment, install a wheel downloaded from the GitHub Releases page. Replace
-the placeholder with the filename of an actually published asset:
+Use an already activated isolated RepoMind environment. Download the
+[published b13 wheel](https://github.com/raazlehra/Repomind/releases/download/v2.0.0b13/repomind-2.0.0b13-py3-none-any.whl),
+then verify it before installation:
 
-```powershell
-python -m pip install "C:\Downloads\repomind-<published-version>-py3-none-any.whl"
+~~~powershell
+$WheelPath = (Resolve-Path "C:\Downloads\repomind-2.0.0b13-py3-none-any.whl").Path
+$Expected = "6152d1fa9761dd55662defe68a77d02cd50e7dd22bc4c013f62a1b7080601bd9"
+if ((Get-FileHash -LiteralPath $WheelPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $Expected) { throw "RepoMind wheel checksum mismatch" }
+python -m pip install $WheelPath
 repomind --version
-```
+~~~
 
 Then open Windows PowerShell at the safe repository root:
 
@@ -24,10 +28,10 @@ Then open Windows PowerShell at the safe repository root:
 Set-Location "C:\path\to\Repomind"
 ```
 
-The version command must match the wheel selected from GitHub Releases. The historical b11 wheel
-reports `RepoMind 2.0.0b11`; a local or actually published b12 wheel reports
-`RepoMind 2.0.0b12`. Do not show a public b12 download unless a `v2.0.0b12` GitHub Release and
-that exact asset actually exist.
+The current demo wheel is [v2.0.0b13](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b13),
+published on November 15, 2026, and must report `RepoMind 2.0.0b13`.
+Historical b11 and b12 wheels report `RepoMind 2.0.0b11` and `RepoMind 2.0.0b12`
+respectively; those examples are not the current demo installation.
 
 ## Demo flow
 
@@ -65,7 +69,7 @@ Explain that RepoMind does not run the recommended commands. A developer or trus
 review the evidence, verify each command and working directory, and decide what to execute.
 Confidence labels summarize static evidence; they are not probabilities or correctness claims.
 
-With `2.0.0b12` and the optional Tree-sitter extra, a maintainer may also show
+With `2.0.0b13` and the optional Tree-sitter extra, a maintainer may also show
 source-anchored `.json`/`.jsonl` fixture relationships. State explicitly that wrapper-based data
 flow remains unsupported, coverage is unknown, and the recommended npm command is not executed.
 

@@ -38,34 +38,34 @@ RepoMind is designed for static local analysis. It should not execute repository
 
 ## Installation
 
-Select a beta that is actually published on this repository's
-[GitHub Releases](https://github.com/raazlehra/Repomind/releases) page, then download its exact
-wheel. Do not infer publication from source metadata or construct a guessed release URL.
+The latest published beta is [v2.0.0b13](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b13), published on November 15, 2026.
+Download its [exact wheel](https://github.com/raazlehra/Repomind/releases/download/v2.0.0b13/repomind-2.0.0b13-py3-none-any.whl) and verify SHA-256
+`6152d1fa9761dd55662defe68a77d02cd50e7dd22bc4c013f62a1b7080601bd9` before installation.
+The published [checksum file](https://github.com/raazlehra/Repomind/releases/download/v2.0.0b13/SHA256SUMS.txt) also records the source-distribution hash.
 
 Do not use plain `pip install repomind`. The package with that name on PyPI is a different
 project.
 
-Create and activate an isolated environment on Windows PowerShell, then install the downloaded
-wheel:
+Verify the downloaded b13 wheel and use an explicit isolated interpreter on Windows PowerShell:
 
-```powershell
+~~~powershell
+$WheelPath = (Resolve-Path "C:\Downloads\repomind-2.0.0b13-py3-none-any.whl").Path
+$Expected = "6152d1fa9761dd55662defe68a77d02cd50e7dd22bc4c013f62a1b7080601bd9"
+if ((Get-FileHash -LiteralPath $WheelPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $Expected) { throw "RepoMind wheel checksum mismatch" }
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install "C:\Downloads\repomind-<published-version>-py3-none-any.whl"
-```
+& ".\.venv\Scripts\python.exe" -m pip install $WheelPath
+& ".\.venv\Scripts\python.exe" -m repomind --version
+& ".\.venv\Scripts\python.exe" -m repomind --help
+& ".\.venv\Scripts\repomind.exe" --help
+~~~
 
-Verify both entry points:
+For Linux, follow the matching checksum-gated b13 commands in
+[Installation and lifecycle](INSTALLATION.md).
 
-```powershell
-repomind --version
-repomind --help
-python -m repomind --help
-```
-
-The reported version must match the release asset you selected. The published b12 wheel reports:
+The reported version must match the release asset you selected. The published b13 wheel reports:
 
 ```text
-RepoMind 2.0.0b12
+RepoMind 2.0.0b13
 ```
 
 Contributors who intentionally need an editable source install should follow
@@ -73,11 +73,11 @@ Contributors who intentionally need an editable source install should follow
 See [Installation and lifecycle](INSTALLATION.md) for optional extras, local-build validation,
 upgrade scope, and uninstall/reinstall behavior.
 
-### b12 release verification and analysis boundaries
+### b13 release verification and analysis boundaries
 
-The current published beta is [`v2.0.0b12`](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b12).
-Before installing its attached wheel, verify SHA-256
-`34c751e3ffb893bcc07403d4bdf2f6d1c5154ac04e4afcac92bbdfadcf43b827` and follow [Installation and lifecycle](INSTALLATION.md).
+The current published beta is [v2.0.0b13](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b13). Verify its exact wheel hash above
+and follow [Installation and lifecycle](INSTALLATION.md). The b11/b12 records there are
+explicitly historical and their hashes must not be substituted for b13.
 The `.json`/`.jsonl` source-anchored fixture-reference evidence requires the optional `[treesitter]`
 extra. This is structural evidence, not runtime coverage. Unsupported wrapper-based data flow
 remains unsupported, coverage remains unknown, and RepoMind never executes recommended npm tests.
