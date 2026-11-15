@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=70.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "repomind"
-version = "2.0.0b12"
+version = "2.0.0b13"
 description = "Local-first repository intelligence for code search, dependency analysis, and change impact"
 readme = "README.md"
 requires-python = ">=3.11"

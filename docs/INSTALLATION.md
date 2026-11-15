@@ -108,7 +108,7 @@ resulting wheel in a separate disposable environment:
 
 ```powershell
 python -m build
-python -m pip install "dist\repomind-2.0.0b12-py3-none-any.whl"
+python -m pip install "dist\repomind-2.0.0b13-py3-none-any.whl"
 ```
 
 Building locally does not publish a release. Do not describe any locally built wheel as a
@@ -210,3 +210,9 @@ record manual facts before forcing a rebuild when they must be preserved.
 
 After installing and initializing the target repository, see [MCP integration](MCP.md) for Codex,
 GitHub Copilot CLI, VS Code Copilot Chat, and optional Claude Code setup.
+
+## b13 candidate review
+
+The b13 branch remains unpublished pending owner approval. See the [b13 notes](releases/v2.0.0b13.md)
+and [upgrade guide](UPGRADE_B13.md). Published b12 instructions above remain historical and
+must not be treated as b13 download or checksum instructions.

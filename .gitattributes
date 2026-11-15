@@ -1,0 +1,11 @@
+# Preserve qualified RC2 product/test bytes in checkouts on every platform.
+repomind/** text eol=crlf
+pyproject.toml text eol=crlf
+tests/test_gate1_p0a.py text eol=lf
+tests/test_gate2_addendum.py text eol=lf
+tests/test_gate3_closeout.py text eol=lf
+tests/test_gate3_go_option1.py text eol=lf
+tests/test_gate4_py_selectivity.py text eol=crlf
+tests/test_p0b_stem_matching.py text eol=lf
+tests/test_stage2_adversarial.py text eol=lf
+tests/test_symlink_security.py text eol=lf

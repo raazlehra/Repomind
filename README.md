@@ -16,6 +16,9 @@ The current published public beta is [`v2.0.0b12`](https://github.com/raazlehra/
 released on 2026-10-23. Download its attached wheel and confirm SHA-256
 `34c751e3ffb893bcc07403d4bdf2f6d1c5154ac04e4afcac92bbdfadcf43b827` before installation. RepoMind b11 remains the historical upgrade baseline.
 
+This branch prepares **v2.0.0b13** for review; b13 is not published by this PR. See the
+[b13 release notes](docs/releases/v2.0.0b13.md) and [b12 upgrade guidance](docs/UPGRADE_B13.md).
+
 Key capabilities:
 
 - Automatic freshness
@@ -227,6 +230,12 @@ RepoMind `2.0.0b12` recognizes Node.js built-in `.mjs` test suites, bounded mult
 imports, and tightly constrained source-anchored `.json`/`.jsonl` fixture references when the
 optional Tree-sitter backend is active. These relationships remain structural evidence, not
 runtime coverage. Wrapper-based fixture data flow remains unsupported.
+
+In the b13 candidate, component-aware matching and shared-harness recovery improve
+Python/TypeScript selection. Go changed test files are recognized, but Go dependency graphs,
+runner integration and native test selection remain unsupported; production coverage is unknown
+and no Go test command is fabricated. Pinned benchmarks and platform qualification limits
+are documented in the [b13 notes](docs/releases/v2.0.0b13.md).
 
 See the [sanitized sample test-impact report](docs/SAMPLE_TEST_IMPACT_REPORT.md) for a
 reproducible synthetic example and guidance on interpreting evidence and limits.
