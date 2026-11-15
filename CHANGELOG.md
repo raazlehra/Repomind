@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.0b13 - Unreleased public beta candidate
+
+- Recover runnable TypeScript suites consuming shared harnesses with fair graph budgets.
+- Avoid generic-stem cross-component collisions while retaining legitimate test matches.
+- Classify changed Go tests while reporting unsupported relationships and unknown coverage.
+- Reduce Python facade-only over-selection while retaining changed tests and broad fallbacks.
+- Preserve symlink/junction containment, bounded analysis and explicit truncation.
+- Require setuptools>=70.0.0 and include the corrected RC2 adversarial symlink regression.
+- See [release notes](docs/releases/v2.0.0b13.md) for pinned benchmarks and qualification limits.
+
 ## 2.0.0b12 - 2026-10-23 (Public beta)
 
 - Recognized Node.js built-in `.mjs` test suites and recommended an existing broad

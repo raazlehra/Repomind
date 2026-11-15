@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import queue
 import re
 import shlex
+import stat
 import subprocess
+import sys
 import threading
 import time
 from collections.abc import Iterable, Sequence
@@ -152,6 +155,7 @@ class _GraphBudget:
     edges_visited: int = 0
     truncated: bool = False
     reasons: set[str] | None = None
+    fair_quota_reached: bool = False
 
     def mark(self, reason: str) -> None:
         self.truncated = True
@@ -314,7 +318,7 @@ class _EvidenceStore:
 
 def _evidence_priority(evidence: dict[str, Any]) -> int:
     kind = str(evidence.get("kind") or "")
-    if kind == "dependency":
+    if kind in {"dependency", "test-harness-consumer"}:
         return 0
     if kind == "changed-test-file":
         return 1
@@ -381,6 +385,69 @@ def analyze_test_impact(
             "detail": f"Selected {len(selected)} file(s) from {change_source}.",
         },
     ]
+    if graph_stats.fair_quota_reached and not graph_stats.truncated:
+        warnings.append(
+            "Per-file fair graph traversal quota was applied to one or more changed files."
+        )
+    non_doc_changed = [
+        item
+        for item in changed
+        if item.get("purpose") not in {"documentation", "configuration"}
+    ]
+    is_pure_go = bool(
+        non_doc_changed
+        and all(item.get("language") == "go" for item in non_doc_changed)
+    )
+    has_go = any(item.get("language") == "go" for item in non_doc_changed)
+
+    if is_pure_go:
+        warnings.append(
+            "Go test impact analysis is unsupported: dependency graph extraction, test selection, and test runner execution are not available for Go."
+        )
+        evidence.append(
+            {
+                "kind": "unsupported-language-capability",
+                "language": "go",
+                "detail": (
+                    "Go language dependency graph analysis, test selection, and test runner execution "
+                    "are unsupported under conservative fallback. Analysis status 'complete' indicates "
+                    "processing finished without runtime failure, not full Go test-impact capability."
+                ),
+            }
+        )
+    elif has_go:
+        warnings.append(
+            "Mixed language changes detected: non-Go test selection and runner execution are active, but Go language dependency graph extraction, test selection, and test runner execution remain unsupported."
+        )
+        evidence.append(
+            {
+                "kind": "unsupported-language-capability",
+                "language": "go",
+                "detail": (
+                    "One or more changed files are Go source/test files. Go dependency graph analysis "
+                    "and test runner execution are unsupported in this environment."
+                ),
+            }
+        )
+
+    by_language: dict[str, dict[str, bool]] = {}
+    for item in non_doc_changed:
+        lang = str(item.get("language") or "unknown")
+        if lang not in by_language:
+            by_language[lang] = {
+                "dependency_graph_supported": lang != "go",
+                "test_selection_supported": lang != "go",
+                "runner_supported": lang != "go",
+            }
+
+    all_supported = bool(non_doc_changed and not has_go)
+    capabilities: dict[str, Any] = {
+        "dependency_graph_supported": all_supported,
+        "test_selection_supported": all_supported,
+        "runner_supported": all_supported,
+        "by_language": by_language,
+    }
+
     any_truncation = bool(
         graph_stats.truncated
         or area_stats["truncated"]
@@ -389,6 +456,7 @@ def analyze_test_impact(
         or selection_stats["truncated"]
         or budget.reasons
     )
+    report_confidence = "low" if is_pure_go else _overall_confidence(changed, tests)
     report: dict[str, Any] = {
         "schema_version": TEST_IMPACT_SCHEMA_VERSION,
         "repository": ".",
@@ -402,6 +470,7 @@ def analyze_test_impact(
                 else ("truncated" if any_truncation else "complete")
             )
         ),
+        "capabilities": capabilities,
         "change_source": change_source,
         "changed_files": changed,
         "impacted_areas": impacted_areas,
@@ -409,7 +478,7 @@ def analyze_test_impact(
         "uncovered_areas": uncovered,
         "recommended_commands": commands,
         "evidence": evidence,
-        "confidence": _overall_confidence(changed, tests),
+        "confidence": report_confidence,
         "limits": asdict(limits),
         "truncation": {
             "change_selection": selection_stats,
@@ -419,6 +488,7 @@ def analyze_test_impact(
                 "edges_visited": graph_stats.edges_visited,
                 "truncated": graph_stats.truncated,
                 "reasons": sorted(graph_stats.reasons or set()),
+                "fair_quota_applied": graph_stats.fair_quota_reached,
                 "limits": {
                     "max_graph_nodes": limits.max_graph_nodes,
                     "max_graph_edges": limits.max_graph_edges,
@@ -481,8 +551,10 @@ def detect_test_commands(
         for row in test_rows
         if is_executable_test_path(str(row["path"]))
     }
-    relevant_paths = {
-        str(item["file"]) for item in relevant_tests if isinstance(item.get("file"), str)
+    targeted_paths = {
+        str(item["file"])
+        for item in relevant_tests
+        if isinstance(item.get("file"), str) and item.get("confidence", "high") in {"high", "medium"}
     }
     commands: list[dict[str, Any]] = []
     warnings: list[str] = []
@@ -492,7 +564,7 @@ def detect_test_commands(
     for path_value in python_tests:
         python_groups.setdefault(_python_project_boundary(path_value, paths), []).append(path_value)
     for boundary, group_tests in sorted(python_groups.items()):
-        selected = sorted(set(group_tests) & relevant_paths)
+        selected = sorted(set(group_tests) & targeted_paths)
         prefix = ["python", "-m", "pytest"]
         if selected:
             relative_tests = [_relative_to_boundary(path_value, boundary) for path_value in selected]
@@ -569,7 +641,7 @@ def detect_test_commands(
         grouped_js.setdefault((owner, framework, script_name), []).append(test_path)
 
     for (owner, framework, script_name), family_tests in sorted(grouped_js.items()):
-        selected = sorted(set(family_tests) & relevant_paths)
+        selected = sorted(set(family_tests) & targeted_paths)
         prefix = ["npm"]
         if owner != ".":
             prefix.extend(["--prefix", owner])
@@ -610,10 +682,10 @@ def detect_test_commands(
         ):
             break
 
-    for item in _gradle_commands(paths, test_paths, relevant_paths):
+    for item in _gradle_commands(paths, test_paths, targeted_paths):
         if not _append_command_candidate(commands, item, budget):
             break
-    for item in _maestro_commands(paths, test_paths, relevant_paths):
+    for item in _maestro_commands(paths, test_paths, targeted_paths):
         if not _append_command_candidate(commands, item, budget):
             break
     commands = _dedupe_commands(commands)
@@ -1421,17 +1493,16 @@ def _changed_path_byte_length(raw: str) -> int:
 
 def _changed_file_record(database: IndexDatabase, path: str) -> dict[str, Any]:
     row = database.file_by_path(path)
-    classified = classify_file(path)
+    classified = classify_file(path, root=database.root)
+    language = classified[0] if classified else (str(row["language"]) if row is not None else None)
+    purpose = classified[1] if classified else (str(row["purpose"]) if row is not None else None)
+    is_test = bool(classified[2]) if classified else (bool(row["is_test"]) if row is not None else False)
     return {
         "path": path,
         "indexed": row is not None,
-        "language": str(row["language"]) if row is not None else (classified[0] if classified else None),
-        "purpose": str(row["purpose"]) if row is not None else (classified[1] if classified else None),
-        "is_test": (
-            bool(row["is_test"]) and is_executable_test_path(path)
-            if row is not None
-            else bool(classified and classified[2])
-        ),
+        "language": language,
+        "purpose": purpose,
+        "is_test": is_test,
     }
 
 
@@ -1443,7 +1514,7 @@ def _impacted_areas(
     budget: _AnalysisBudget,
 ) -> tuple[dict[str, list[dict[str, Any]]], dict[str, Any], _GraphBudget]:
     areas: dict[tuple[str, str, str], dict[str, Any]] = {}
-    for item in changed:
+    for idx, item in enumerate(changed):
         if not budget.within_time():
             break
         if len(areas) >= limits.max_impacted_candidates:
@@ -1466,7 +1537,17 @@ def _impacted_areas(
         )
         if not item["indexed"]:
             continue
-        direct, indirect = _bounded_dependents(database, path, graph, limits, budget)
+        remaining_files = len(changed) - idx
+        remaining_nodes = max(0, limits.max_graph_nodes - graph.nodes_visited)
+        fair_node_quota = max(1, remaining_nodes // remaining_files) if remaining_files > 0 else remaining_nodes
+        direct, indirect, _ = _bounded_dependents(
+            database,
+            path,
+            graph,
+            limits,
+            budget,
+            max_nodes=fair_node_quota,
+        )
         for dependent in direct:
             if len(areas) >= limits.max_impacted_candidates:
                 budget.mark("max_impacted_candidates")
@@ -1576,6 +1657,19 @@ def _impacted_areas(
     return output, metadata, graph
 
 
+def _is_facade_module(path: str) -> bool:
+    name = PurePosixPath(path).name.lower()
+    return name in {
+        "__init__.py",
+        "__init__.pyi",
+        "index.ts",
+        "index.js",
+        "index.tsx",
+        "index.jsx",
+        "mod.rs",
+    }
+
+
 def _bounded_dependents(
     database: IndexDatabase,
     target_path: str,
@@ -1584,14 +1678,18 @@ def _bounded_dependents(
     budget: _AnalysisBudget,
     max_indirect_edges: int | None = None,
     max_direct_edges: int | None = None,
-) -> tuple[list[dict[str, Any]], list[str]]:
+    max_nodes: int | None = None,
+) -> tuple[list[dict[str, Any]], list[str], list[str]]:
     if not budget.within_time():
         graph.mark("max_analysis_seconds")
-        return [], []
+        return [], [], []
     if graph.nodes_visited >= limits.max_graph_nodes:
         graph.mark("max_graph_nodes")
-        return [], []
+        return [], [], []
+    if max_nodes is not None and max_nodes <= 0:
+        return [], [], []
     graph.nodes_visited += 1
+    target_nodes = 1
     direct: list[dict[str, Any]] = []
     direct_ids: list[int] = []
     seen_paths = {target_path}
@@ -1624,7 +1722,11 @@ def _bounded_dependents(
             if graph.nodes_visited >= limits.max_graph_nodes:
                 graph.mark("max_graph_nodes")
                 break
+            if max_nodes is not None and target_nodes >= max_nodes:
+                graph.fair_quota_reached = True
+                break
             graph.nodes_visited += 1
+            target_nodes += 1
             seen_paths.add(path)
         direct.append(
             {
@@ -1639,7 +1741,9 @@ def _bounded_dependents(
         )
         direct_ids.append(int(row["id"]))
 
-    indirect: set[str] = set()
+    concrete_indirect: set[str] = set()
+    facade_indirect: set[str] = set()
+    file_path_map: dict[int, str] = {int(row["id"]): str(row["path"]) for row in direct}
     queue = [(file_id, 0) for file_id in sorted(set(direct_ids))]
     cursor = 0
     seen_ids = set(direct_ids)
@@ -1647,8 +1751,18 @@ def _bounded_dependents(
     while cursor < len(queue):
         file_id, depth = queue[cursor]
         cursor += 1
-        if depth >= 2 or graph.truncated:
+        if depth >= 1 or graph.nodes_visited >= limits.max_graph_nodes:
             continue
+        if max_nodes is not None and target_nodes >= max_nodes:
+            graph.fair_quota_reached = True
+            break
+        bridge_path = file_path_map.get(file_id)
+        if bridge_path is None:
+            r = database.connection.execute("SELECT path FROM files WHERE id=?", (file_id,)).fetchone()
+            bridge_path = str(r["path"]) if r else ""
+            file_path_map[file_id] = bridge_path
+        bridge_is_facade = _is_facade_module(bridge_path)
+
         for row in database.connection.execute(
             """SELECT DISTINCT f.id, f.path FROM dependencies d
                JOIN files f ON f.id=d.source_file_id
@@ -1657,28 +1771,45 @@ def _bounded_dependents(
         ):
             if not budget.within_time():
                 graph.mark("max_analysis_seconds")
-                return direct, sorted(indirect)
+                direct_paths = {str(row["path"]) for row in direct}
+                only_facade = sorted(facade_indirect - concrete_indirect - direct_paths)
+                return direct, sorted(concrete_indirect), only_facade
             if max_indirect_edges is not None and indirect_edges >= max_indirect_edges:
                 if max_indirect_edges:
                     graph.mark("max_indirect_edges_per_file")
-                return direct, sorted(indirect)
+                direct_paths = {str(row["path"]) for row in direct}
+                only_facade = sorted(facade_indirect - concrete_indirect - direct_paths)
+                return direct, sorted(concrete_indirect), only_facade
             indirect_edges += 1
             if graph.edges_visited >= limits.max_graph_edges:
                 graph.mark("max_graph_edges")
                 break
             graph.edges_visited += 1
             dependent_id = int(row["id"])
+            dependent_path = str(row["path"])
+            file_path_map[dependent_id] = dependent_path
+
+            if bridge_is_facade:
+                facade_indirect.add(dependent_path)
+            else:
+                concrete_indirect.add(dependent_path)
+
             if dependent_id in seen_ids:
                 continue
             if graph.nodes_visited >= limits.max_graph_nodes:
                 graph.mark("max_graph_nodes")
                 break
+            if max_nodes is not None and target_nodes >= max_nodes:
+                graph.fair_quota_reached = True
+                break
             graph.nodes_visited += 1
+            target_nodes += 1
             seen_ids.add(dependent_id)
-            dependent_path = str(row["path"])
-            indirect.add(dependent_path)
-            queue.append((dependent_id, depth + 1))
-    return direct, sorted(indirect)
+            if not bridge_is_facade:
+                queue.append((dependent_id, depth + 1))
+    direct_paths = {str(row["path"]) for row in direct}
+    only_facade = sorted(facade_indirect - concrete_indirect - direct_paths)
+    return direct, sorted(concrete_indirect), only_facade
 
 
 def _numeric_confidence(value: float) -> Confidence:
@@ -1732,10 +1863,10 @@ def _relevant_tests(
     test_paths = [
         str(row["path"])
         for row in test_rows
-        if is_executable_test_path(str(row["path"]))
+        if is_executable_test_path(str(row["path"]), root=database.root)
     ]
     source_cache: dict[str, str] = {}
-    for changed_item in changed:
+    for idx, changed_item in enumerate(changed):
         if evidence_store.exhausted:
             break
         if not budget.within_time():
@@ -1744,22 +1875,70 @@ def _relevant_tests(
             budget.mark("max_relevant_test_candidates")
             break
         changed_path = str(changed_item["path"])
-        if changed_item["is_test"] and is_executable_test_path(changed_path):
-            _merge_test(
-                candidates,
-                changed_path,
-                changed_path,
-                "high",
-                False,
-                "The executable test file itself changed.",
-                {"kind": "changed-test-file", "path": changed_path},
-                evidence_store,
-            )
-            if evidence_store.exhausted:
-                break
+        remaining_files = len(changed) - idx
+        remaining_nodes = max(0, limits.max_graph_nodes - graph.nodes_visited)
+        fair_node_quota = max(1, remaining_nodes // remaining_files) if remaining_files > 0 else remaining_nodes
+        direct: list[dict[str, Any]] | None = None
+
+        if changed_item["is_test"]:
+            if is_executable_test_path(changed_path, root=database.root):
+                _merge_test(
+                    candidates,
+                    changed_path,
+                    changed_path,
+                    "high",
+                    False,
+                    "The executable test file itself changed.",
+                    {"kind": "changed-test-file", "path": changed_path},
+                    evidence_store,
+                )
+                if evidence_store.exhausted:
+                    break
+            if changed_item["indexed"]:
+                direct, _, _ = _bounded_dependents(
+                    database,
+                    changed_path,
+                    graph,
+                    limits,
+                    budget,
+                    max_indirect_edges=0,
+                    max_direct_edges=limits.max_direct_edges_per_file,
+                    max_nodes=fair_node_quota,
+                )
+                for row in direct:
+                    if evidence_store.exhausted:
+                        break
+                    test_path = str(row["path"])
+                    if (
+                        test_path not in candidates
+                        and len(candidates) >= limits.max_relevant_test_candidates
+                    ):
+                        budget.mark("max_relevant_test_candidates")
+                        break
+                    if (
+                        bool(row["is_test"])
+                        and is_executable_test_path(test_path, root=database.root)
+                        and str(row.get("kind") or "") == "imports"
+                    ):
+                        _merge_test(
+                            candidates,
+                            test_path,
+                            changed_path,
+                            "medium",
+                            True,
+                            f"Test directly imports changed test file or harness {changed_path}.",
+                            {
+                                "kind": "test-harness-consumer",
+                                "path": test_path,
+                                "target": changed_path,
+                                "relationship": str(row["kind"]),
+                                "source": str(row["source"]),
+                            },
+                            evidence_store,
+                        )
             continue
         if changed_item["indexed"]:
-            direct, indirect = _bounded_dependents(
+            direct, indirect, facade_indirect = _bounded_dependents(
                 database,
                 changed_path,
                 graph,
@@ -1767,6 +1946,7 @@ def _relevant_tests(
                 budget,
                 max_indirect_edges=limits.max_indirect_edges_per_file,
                 max_direct_edges=limits.max_direct_edges_per_file,
+                max_nodes=fair_node_quota,
             )
             for row in direct:
                 if evidence_store.exhausted:
@@ -1778,7 +1958,7 @@ def _relevant_tests(
                 ):
                     budget.mark("max_relevant_test_candidates")
                     break
-                if bool(row["is_test"]) and is_executable_test_path(test_path):
+                if bool(row["is_test"]) and is_executable_test_path(test_path, root=database.root):
                     _merge_test(
                         candidates,
                         test_path,
@@ -1819,7 +1999,33 @@ def _relevant_tests(
                     },
                     evidence_store,
                 )
-        changed_stem = _semantic_stem(changed_path)
+            for test_path in sorted(set(facade_indirect) & set(test_paths)):
+                if evidence_store.exhausted:
+                    break
+                if (
+                    test_path not in candidates
+                    and len(candidates) >= limits.max_relevant_test_candidates
+                ):
+                    budget.mark("max_relevant_test_candidates")
+                    break
+                if test_path not in candidates:
+                    _merge_test(
+                        candidates,
+                        test_path,
+                        changed_path,
+                        "low",
+                        False,
+                        "Test is reachable only through a package facade/hub re-export path without direct component evidence.",
+                        {
+                            "kind": "facade-reachability",
+                            "path": test_path,
+                            "target": changed_path,
+                            "classification": "facade-hub",
+                        },
+                        evidence_store,
+                    )
+        if changed_item.get("language") == "go":
+            continue
         for test_path in test_paths:
             if evidence_store.exhausted:
                 break
@@ -1828,7 +2034,7 @@ def _relevant_tests(
             if len(candidates) >= limits.max_relevant_test_candidates:
                 budget.mark("max_relevant_test_candidates")
                 break
-            if changed_stem and changed_stem == _semantic_stem(test_path):
+            if _is_filename_match(changed_path, test_path):
                 _merge_test(
                     candidates,
                     test_path,
@@ -1864,6 +2070,7 @@ def _relevant_tests(
             limits,
             budget,
             evidence_store,
+            direct=direct,
         )
         if evidence_store.exhausted:
             break
@@ -2053,19 +2260,21 @@ def _link_route_api_tests(
     limits: TestImpactLimits,
     budget: _AnalysisBudget,
     evidence_store: _EvidenceStore,
+    direct: list[dict[str, Any]] | None = None,
 ) -> None:
     if not changed_item.get("indexed"):
         return
-    direct, indirect = _bounded_dependents(
-        database,
-        changed_path,
-        graph,
-        limits,
-        budget,
-        max_indirect_edges=0,
-        max_direct_edges=limits.max_direct_edges_per_file,
-    )
-    related_paths = {changed_path, *(str(row["path"]) for row in direct), *indirect}
+    if direct is None:
+        direct, _, _ = _bounded_dependents(
+            database,
+            changed_path,
+            graph,
+            limits,
+            budget,
+            max_indirect_edges=0,
+            max_direct_edges=limits.max_direct_edges_per_file,
+        )
+    related_paths = {changed_path, *(str(row["path"]) for row in direct)}
     route_literals: set[str] = set()
     route_files: set[str] = set()
     for path in sorted(related_paths):
@@ -2164,7 +2373,7 @@ def _link_route_api_tests(
             if test_path not in candidates and len(candidates) >= limits.max_relevant_test_candidates:
                 budget.mark("max_relevant_test_candidates")
                 break
-            if not is_executable_test_path(test_path):
+            if not is_executable_test_path(test_path, root=database.root):
                 continue
             _merge_test(
                 candidates,
@@ -2251,10 +2460,6 @@ def _bounded_source(
     if not budget.within_time():
         graph.mark("max_analysis_seconds")
         return None
-    if graph.nodes_visited >= limits.max_graph_nodes:
-        graph.mark("max_graph_nodes")
-        return None
-    graph.nodes_visited += 1
     source = _read_test_source(root / path)
     source_cache[path] = source
     return source
@@ -2262,7 +2467,7 @@ def _bounded_source(
 
 def _test_priority(item: dict[str, Any]) -> int:
     kinds = {str(evidence.get("kind")) for evidence in item.get("evidence", [])}
-    if "changed-test-file" in kinds or "dependency" in kinds:
+    if "changed-test-file" in kinds or "dependency" in kinds or "test-harness-consumer" in kinds:
         return 0
     if "migration-suite" in kinds or "route-api-client" in kinds or "route-e2e" in kinds:
         return 1
@@ -2320,21 +2525,34 @@ def _uncovered_areas(
             continue
         if path in meaningful:
             continue
+        is_go = item.get("language") == "go"
         gaps.append(
             {
                 "path": path,
                 "area": str(item.get("purpose") or "production file"),
-                "confidence": "high" if not tests else "medium",
+                "confidence": "low" if is_go else ("high" if not tests else "medium"),
                 "reason": (
-                    "No discovered tests were attributable to this changed production area."
-                    if not tests
-                    else "No high- or medium-confidence test relationship was detected for this changed production area."
+                    "Go language dependency analysis and test selection are unsupported; static test attribution is unavailable."
+                    if is_go
+                    else (
+                        "No discovered tests were attributable to this changed production area."
+                        if not tests
+                        else "No high- or medium-confidence test relationship was detected for this changed production area."
+                    )
                 ),
                 "coverage": "unknown",
-                "evidence": {
-                    "kind": "absence-of-matching-static-evidence",
-                    "reviewed_relevant_tests": len(tests),
-                },
+                "evidence": (
+                    {
+                        "kind": "unsupported-language-relationship-extraction",
+                        "language": "go",
+                        "detail": "Go AST dependency tracing and test selection are unsupported under conservative fallback.",
+                    }
+                    if is_go
+                    else {
+                        "kind": "absence-of-matching-static-evidence",
+                        "reviewed_relevant_tests": len(tests),
+                    }
+                ),
             }
         )
     return gaps
@@ -2431,13 +2649,104 @@ def _dedupe_commands(commands: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return output
 
 
+def _is_symlink_or_junction(path: Path) -> bool:
+    try:
+        if path.is_symlink():
+            return True
+        if sys.platform == "win32":
+            st = os.lstat(path)
+            tag = getattr(st, "st_reparse_tag", 0)
+            if tag in {
+                getattr(stat, "IO_REPARSE_TAG_MOUNT_POINT", 0),
+                getattr(stat, "IO_REPARSE_TAG_SYMLINK", 0),
+            }:
+                return True
+    except OSError:
+        return True
+    return False
+
+
 def _read_test_source(path: Path) -> str:
     try:
+        if _is_symlink_or_junction(path):
+            return ""
+        for parent in path.parents:
+            if str(parent) == path.anchor:
+                break
+            if _is_symlink_or_junction(parent):
+                return ""
         if path.stat().st_size > MAX_TEST_SOURCE_BYTES:
             return ""
         return path.read_text(encoding="utf-8-sig", errors="replace")
     except OSError:
         return ""
+
+
+_GENERIC_STEMS = frozenset(
+    {"index", "main", "app", "common", "base", "default", "mod", "lib", "root", "core"}
+)
+_SOURCE_PREFIXES = frozenset({"src", "lib", "app", "pkg", "source"})
+_TEST_PREFIXES = frozenset({"test", "tests", "spec", "specs", "__tests__"})
+_TEST_SUBCATEGORIES = frozenset({"unit", "integration", "functional", "e2e"})
+
+
+def _component_relative_parts(path: PurePosixPath) -> tuple[str, ...]:
+    parts = list(path.parts)
+    if parts and parts[0].lower() in _SOURCE_PREFIXES | _TEST_PREFIXES:
+        parts.pop(0)
+    if parts and parts[0].lower() in _TEST_SUBCATEGORIES:
+        parts.pop(0)
+    if parts and parts[-1].lower() in _TEST_PREFIXES:
+        parts.pop()
+    return tuple(part.lower() for part in parts)
+
+
+def _is_filename_match(changed_path: str, test_path: str) -> bool:
+    changed_stem = _semantic_stem(changed_path)
+    test_stem = _semantic_stem(test_path)
+    if not changed_stem or not test_stem:
+        return False
+
+    changed_p = PurePosixPath(changed_path)
+    test_p = PurePosixPath(test_path)
+
+    # 1. Exact directory siblings
+    if changed_p.parent == test_p.parent:
+        if changed_stem == test_stem:
+            return True
+        parent_name = changed_p.parent.name.lower()
+        return bool(
+            parent_name
+            and (
+                (changed_stem in _GENERIC_STEMS and test_stem == parent_name)
+                or (test_stem in _GENERIC_STEMS and changed_stem == parent_name)
+            )
+        )
+
+    # 2. Mirrored component directories across src/ and tests/
+    changed_parts = _component_relative_parts(changed_p.parent)
+    test_parts = _component_relative_parts(test_p.parent)
+
+    if changed_parts and changed_parts == test_parts:
+        if changed_stem == test_stem:
+            return True
+        parent_name = changed_parts[-1]
+        return bool(
+            parent_name
+            and (
+                (changed_stem in _GENERIC_STEMS and test_stem == parent_name)
+                or (test_stem in _GENERIC_STEMS and changed_stem == parent_name)
+            )
+        )
+
+    # 3. For generic stems, reject cross-component matches
+    if changed_stem in _GENERIC_STEMS or test_stem in _GENERIC_STEMS:
+        return False
+
+    # 4. Non-generic stem fallback for flat test root layouts (e.g. tests/test_invoice.py matching src/payments/invoice.py)
+    # Only applies when the test is in a flat test directory (not test_parts) and the stem is non-generic.
+    # Unrelated nested components (test_parts != changed_parts, both non-empty) are strictly rejected.
+    return bool(not test_parts and changed_stem not in _GENERIC_STEMS and changed_stem == test_stem)
 
 
 def _semantic_stem(path: str) -> str:

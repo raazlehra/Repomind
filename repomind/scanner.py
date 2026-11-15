@@ -2,12 +2,55 @@ from __future__ import annotations
 
 import fnmatch
 import os
+import re
+import stat
+import sys
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from repomind.config import Config
 from repomind.models import ScannedFile
+
+_TOP_LEVEL_TEST_CALL = re.compile(
+    r"(?m)^(?:(?:export\s+)?(?:default\s+)?\s*)?(?:describe|test|it|suite)\s*(?:\.(?:only|skip|todo|concurrent|each))?\s*\("
+)
+
+
+def _is_symlink_or_junction(path: Path) -> bool:
+    try:
+        if path.is_symlink():
+            return True
+        if sys.platform == "win32":
+            st = os.lstat(path)
+            tag = getattr(st, "st_reparse_tag", 0)
+            if tag in {
+                getattr(stat, "IO_REPARSE_TAG_MOUNT_POINT", 0),
+                getattr(stat, "IO_REPARSE_TAG_SYMLINK", 0),
+            }:
+                return True
+    except OSError:
+        return True
+    return False
+
+
+def _has_top_level_test_runner_calls(path: Path) -> bool:
+    try:
+        if _is_symlink_or_junction(path):
+            return False
+        for parent in path.parents:
+            if str(parent) == path.anchor:
+                break
+            if _is_symlink_or_junction(parent):
+                return False
+        if path.stat().st_size > 1_000_000:
+            return False
+        content = path.read_text(encoding="utf-8-sig", errors="replace")
+        clean_content = re.sub(r"/\*.*?\*/", "", content, flags=re.DOTALL)
+        clean_content = re.sub(r"//.*$", "", clean_content, flags=re.MULTILINE)
+        return bool(_TOP_LEVEL_TEST_CALL.search(clean_content))
+    except OSError:
+        return False
 
 SOURCE_EXTENSIONS: dict[str, str] = {
     ".py": "python",
@@ -88,7 +131,7 @@ TEST_SUPPORT_DIRECTORIES = {
 }
 
 
-def is_executable_test_path(relative: str) -> bool:
+def is_executable_test_path(relative: str, root: Path | None = None) -> bool:
     """Return whether a path is an executable test target rather than test support."""
     path = PurePosixPath(relative.replace("\\", "/"))
     name = path.name.lower()
@@ -101,7 +144,17 @@ def is_executable_test_path(relative: str) -> bool:
     if suffix == ".py":
         return name.startswith("test_") or name.endswith("_test.py")
     if suffix in {".js", ".mjs", ".cjs", ".jsx", ".ts", ".mts", ".cts", ".tsx"}:
-        return ".test." in name or ".spec." in name
+        if not (".test." in name or ".spec." in name):
+            return False
+        # Case helpers vs runnable case suites
+        if ".case.test." in name or ".case.spec." in name or name.startswith(("common.", "helper.", "base.")):
+            if root is not None:
+                target_file = root / relative
+                if target_file.is_file():
+                    return _has_top_level_test_runner_calls(target_file)
+            if name.startswith(("common.", "helper.", "base.")):
+                return False
+        return True
     if suffix in {".java", ".kt", ".kts", ".cs"}:
         stem = path.stem.lower()
         return (
@@ -110,6 +163,8 @@ def is_executable_test_path(relative: str) -> bool:
             or "androidtest" in lower_parts
             or stem.endswith(("test", "tests", "testcase"))
         )
+    if suffix == ".go":
+        return name.endswith("_test.go")
     return ".maestro" in lower_parts and suffix in {".yaml", ".yml"}
 
 
@@ -220,12 +275,28 @@ def _is_binary(path: Path) -> bool:
     return control / len(sample) > 0.08
 
 
-def classify_file(relative: str) -> tuple[str, str, bool] | None:
+def classify_file(relative: str, root: Path | None = None) -> tuple[str, str, bool] | None:
     path = PurePosixPath(relative)
     name = path.name
+    lower_name = name.lower()
     suffix = path.suffix.lower()
     lower_parts = {part.lower() for part in path.parts}
-    is_test = is_executable_test_path(relative)
+    is_exec_test = is_executable_test_path(relative, root=root)
+    is_test = (
+        is_exec_test
+        or ".case.test." in lower_name
+        or ".case.spec." in lower_name
+        or lower_name.endswith(
+            (
+                ".case.test.ts",
+                ".case.test.tsx",
+                ".case.test.js",
+                ".case.test.jsx",
+                ".case.spec.ts",
+                ".case.spec.tsx",
+            )
+        )
+    )
     if name in SPECIAL_CONFIGS or name.startswith(("vite.config.", "next.config.")):
         return "config", "configuration", is_test
     if suffix in SOURCE_EXTENSIONS:
@@ -293,7 +364,7 @@ class RepositoryScanner:
                     relative, self.config
                 ):
                     continue
-                classified = classify_file(relative)
+                classified = classify_file(relative, root=self.root)
                 if classified is None and not matcher.forced_include(relative):
                     continue
                 try:
