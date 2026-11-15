@@ -1,6 +1,23 @@
 # Release Process
 
-## Current published public beta: v2.0.0b12 (2026-10-23)
+## Current published public beta: v2.0.0b13 (2026-11-15)
+
+[RepoMind v2.0.0b13](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b13) was published on November 15, 2026 as a GitHub
+prerelease. Its annotated tag points to merged main commit
+`fcd9c08ee6f94df2c067abf7b8d4bba723804a1b`.
+[Post-merge CI](https://github.com/raazlehra/Repomind/actions/runs/43707122224) passed
+all five required jobs. Published assets:
+
+- [Wheel](https://github.com/raazlehra/Repomind/releases/download/v2.0.0b13/repomind-2.0.0b13-py3-none-any.whl) - SHA-256 `6152d1fa9761dd55662defe68a77d02cd50e7dd22bc4c013f62a1b7080601bd9`
+- [Source distribution](https://github.com/raazlehra/Repomind/releases/download/v2.0.0b13/repomind-2.0.0b13.tar.gz) - SHA-256 `eae981560f5777dcac85da01d509f38c11d7937db63b0326122f42aa045a6d85`
+- [SHA256SUMS.txt](https://github.com/raazlehra/Repomind/releases/download/v2.0.0b13/SHA256SUMS.txt)
+
+Actual public downloads matched these hashes; the downloaded wheel installed and reported
+`2.0.0b13`. All b12 assets remained unchanged. See the [b13 notes](releases/v2.0.0b13.md)
+for the exact tested runtimes and limits, and the [installation guide](INSTALLATION.md) or
+[b12 upgrade guide](UPGRADE_B13.md) for current instructions. macOS remains untested.
+
+## Historical published b12 (2026-10-23)
 
 RepoMind [`v2.0.0b12`](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b12) is a
 public GitHub **prerelease**, not stable v2.0.0. The tag and final source commit are
@@ -38,7 +55,7 @@ static analysis: no recommended repository commands are executed, coverage is un
 wrapper-based fixture data flow remains unsupported. These notes document the earlier candidate-preparation phase; the published b12 assets are
 recorded above.
 
-The process below prepares a future candidate without publishing it. Replace placeholders with
+The process below is a reusable future-release procedure, not an unfinished b13 publication gate. It prepares a future candidate without publishing it. Replace placeholders with
 the candidate version and a suitable baseline release; do not infer that a later release exists.
 
 ## Required CI checks
@@ -52,7 +69,7 @@ It does not deploy, create a GitHub Release, or upload to PyPI. Its expected che
 - `CI / quality`
 - `CI / windows-wheel-smoke`
 
-RepoMind requires Python 3.11+. The b11 release matrix explicitly validates Python
+RepoMind requires Python 3.11+. The historical b11 release matrix explicitly validated Python
 3.11–3.13. Other Python versions are not claimed as release-tested unless listed in the release
 notes. The quality job runs Ruff, mypy, wheel/sdist build and inspection, and an installed-wheel
 CLI/MCP smoke test on Linux. The Windows job independently builds, inspects, and installs the
@@ -67,7 +84,7 @@ python -m pytest
 python -m ruff check repomind tests tools benchmarks scripts
 python -m mypy repomind
 python -m build
-python scripts/verify_release_artifacts.py --dist-dir dist --expected-version 2.0.0b12
+python scripts/verify_release_artifacts.py --dist-dir dist --expected-version <candidate-version>
 python scripts/installed_wheel_smoke.py --wheel dist
 git diff --check
 ```
@@ -99,8 +116,8 @@ retained repository data. A separate disposable repository verifies the document
 `init --force` rebuilds the database and removes manual memory stored only there. Recommended
 test commands returned by RepoMind are never executed by these smokes.
 
-For the b12 candidate, use the authentic b11 GitHub Release wheel as the baseline and first
-verify SHA-256
+Historical b12 preparation used the authentic b11 GitHub Release wheel as its baseline after
+verifying SHA-256
 `3202f593084a5f13cbe68c21bc7a2bc3c6207671a28e10303267bf0b0594ba9f`.
 
 For b11, pre-release validation exercised the b10-to-b11 lifecycle against the local b11

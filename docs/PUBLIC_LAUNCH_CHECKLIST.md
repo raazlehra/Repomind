@@ -1,8 +1,23 @@
 # RepoMind Public Launch Readiness Checklist
 
-This remains a conservative checklist: checked items have evidence for the stated scope, while
-unchecked items still require external, manual, or broader validation. Publishing b11 does not
-automatically complete the remaining launch work.
+The current published beta is [v2.0.0b13](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b13) (November 15, 2026).
+See the [current release record](RELEASE.md), [b13 notes](releases/v2.0.0b13.md)
+and [installation guide](INSTALLATION.md) for current assets and qualification.
+
+This document preserves dated b11/b12 readiness records below. Their candidate-status wording,
+website observations and unchecked items describe those historical checkpoints, not b13's
+publication state. Publication does not automatically establish independent tester feedback,
+macOS support, complete runtime coverage or the remaining broader launch work.
+
+## 2026-11-15 b13 publication status
+
+- [x] GitHub prerelease published with the verified wheel, sdist and checksum file.
+- [x] Post-merge CI passed all five required jobs on
+  `fcd9c08ee6f94df2c067abf7b8d4bba723804a1b`.
+- [x] Public downloads matched the published checksums and the wheel installed as 2.0.0b13.
+- [x] Existing b12 assets were verified unchanged.
+- [ ] macOS qualification - not performed; no new platform support claim.
+- [ ] Broader independent feedback and launch work - not established merely by publication.
 
 ## 2026-10-23 b12 pre-publication preparation record
 
@@ -44,12 +59,16 @@ automatically complete the remaining launch work.
   `windows-wheel-smoke` passed for release commit `b6dd660`.
 - [x] Installation verification - the final public b11 wheel was independently downloaded,
   checksum-verified, installed, and smoke-tested.
-- [x] Public website - the [RepoMind website](https://raazlehra.github.io/repomind-site/) now
-  presents the public open-source beta and b11 installation path.
+- [x] Public website - the [RepoMind website](https://raazlehra.github.io/repomind-site/)
+  presented the public open-source beta and b11 installation path at that dated checkpoint; this is not a current website audit.
 - [ ] Independent tester feedback - PENDING; no external independent tester feedback has been
   received yet.
 
-## 1. Product
+## Historical b11 launch checklist (recorded 2026-10-10)
+
+The numbered sections below retain the b11-era evidence and pending work as recorded.
+
+### 1. Product
 
 - [ ] Positioning clear - Likely complete from repo evidence: `README.md` opens with "Local-first repository intelligence for AI coding agents" and explains what RepoMind is and is not.
 - [ ] README understandable in 30 seconds - Requires verification: run a timed read with at least one developer unfamiliar with RepoMind.
@@ -57,7 +76,7 @@ automatically complete the remaining launch work.
 - [ ] Supported languages accurate - Requires verification: `README.md` documents language support, but confirm against parser implementations and tests before public launch.
 - [ ] Roadmap accurate - Requires verification: `IMPLEMENTATION_PLAN.md` exists, but owner should confirm it reflects current priorities.
 
-## 2. Installation
+### 2. Installation
 
 - [ ] Clean-machine install tested - Requires verification: Day 7 passed in new process-isolated Windows virtual environments, but a fresh VM or user profile is still unverified.
 - [x] Windows release validation - b11 `windows-wheel-smoke` passed; pre-release lifecycle validation covered the b10-to-b11 candidate path on Windows/Python 3.12.14.
@@ -68,7 +87,7 @@ automatically complete the remaining launch work.
 - [x] Upgrade instructions - `docs/INSTALLATION.md` documents the exact b10-to-b11 pre-release lifecycle evidence and its final-wheel limitation.
 - [ ] v1/v2 index migration tested - Likely complete from repo evidence: `tests/test_memory.py` covers v1/beta.7-style migration to schema v2; `CHANGELOG.md` and `ARCHITECTURE.md` document the migration.
 
-## 3. Functional
+### 3. Functional
 
 - [ ] `repomind init` - Likely complete from repo evidence: command is in current CLI help and covered by `tests/test_cli.py`.
 - [ ] `repomind doctor` - Likely complete from repo evidence: command is in current CLI help and covered by `tests/test_git_doctor.py`.
@@ -85,7 +104,7 @@ automatically complete the remaining launch work.
 - [ ] MCP - Likely complete from repo evidence: `docs/MCP.md` documents tools and `tests/test_mcp.py` covers startup, tools, and CLI equivalence.
 - [ ] Automatic freshness - Likely complete from repo evidence: `README.md`, `docs/MCP.md`, and `tests/test_freshness.py` cover retrieval-time refresh for CLI and MCP reads.
 
-## 4. Quality
+### 4. Quality
 
 - [x] Full pytest - b11 release-commit test jobs passed on Python 3.11, 3.12, and 3.13.
 - [x] Ruff - the b11 release-commit `quality` job passed its Ruff gate.
@@ -95,7 +114,7 @@ automatically complete the remaining launch work.
 - [ ] Synthetic benchmark - Requires verification: `benchmarks/run_benchmark.py`, `benchmarks/tasks.json`, and `BENCHMARKS.md` exist, but rerun for the release candidate.
 - [ ] Real-world validations - Requires verification: `docs/REAL_WORLD_VALIDATION.md` and `tools/evaluate_real_repos.py` exist, but public-launch evidence needs fresh sanitized runs.
 
-## 5. Security/privacy
+### 5. Security/privacy
 
 - [ ] Secret scan - Requires verification: run a repository secret scanner and review results before launch.
 - [ ] `.env` excluded - Likely complete from repo evidence: `SECURITY.md` documents `.env` and `.env.*` exclusions.
@@ -105,7 +124,7 @@ automatically complete the remaining launch work.
 - [ ] `SECURITY.md` current - Requires verification: file exists and documents the model, but owner should confirm disclosure/contact details before public launch.
 - [ ] Responsible disclosure instructions - Requires verification: `SECURITY.md` explains vulnerability report contents, but no explicit public contact or GitHub security advisory process was confirmed.
 
-## 6. GitHub
+### 6. GitHub
 
 - [ ] About description - Requires verification: GitHub repository metadata is not represented in local files.
 - [ ] Topics - Requires verification: `pyproject.toml` has suggested package keywords, but actual GitHub topics must be confirmed in repository settings.
@@ -120,14 +139,14 @@ automatically complete the remaining launch work.
 - [x] Release notes - the b11 GitHub prerelease is published with release notes.
 - [x] Changelog - `CHANGELOG.md` records b11 as released on 2026-10-10.
 
-## 7. Community
+### 7. Community
 
 - [ ] Tester feedback received - PENDING; no external independent tester feedback has been received.
 - [ ] Major tester blockers resolved - Requires verification: needs issue/feedback review and release-owner signoff.
 - [ ] Known limitations listed - Likely complete from repo evidence: `README.md`, `docs/MCP.md`, and `BENCHMARKS.md` list limitations and claim boundaries.
 - [ ] Feedback/discussion channel prepared - Requires verification: issue templates exist, but public discussion/support channel setup needs confirmation.
 
-## 8. Release
+### 8. Release
 
 - [x] Version - source and runtime metadata declare `2.0.0b11`.
 - [x] Tag - `v2.0.0b11` exists at release commit `b6dd660`.
@@ -139,7 +158,7 @@ automatically complete the remaining launch work.
 - [ ] Fresh OS/user-profile installation - PENDING; existing disposable-environment validation is not a clean-machine claim.
 - [ ] Rollback instructions - PENDING; no public rollback instructions are documented.
 
-## 9. Marketing/demo
+### 9. Marketing/demo
 
 - [ ] 60-second video - PENDING; `docs/DEMO.md` is a CLI demo script, not a published video.
 - [ ] Architecture diagram - Likely complete from repo evidence: `ARCHITECTURE.md` includes a text system-flow diagram; verify whether a public visual asset is needed.
@@ -148,7 +167,7 @@ automatically complete the remaining launch work.
 - [ ] Truthful claims only - Likely complete from repo evidence: `README.md`, `BENCHMARKS.md`, and `docs/REAL_WORLD_VALIDATION.md` repeatedly describe local estimates and avoid universal claims.
 - [ ] No unsupported credit-saving claims - Likely complete from repo evidence: `README.md`, `BENCHMARKS.md`, `docs/MCP.md`, and `docs/REAL_WORLD_VALIDATION.md` explicitly reject billing/credit-saving claims.
 
-## 10. Business
+### 10. Business
 
 - [ ] Free-beta decision - Requires verification: no public business decision found in repository files.
 - [ ] Setup/audit offering - Requires verification: `repomind audit` exists and `docs/sample-audit-report.md` exists, but offering terms are not documented.

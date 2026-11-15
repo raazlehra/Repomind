@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0b13 - Unreleased public beta candidate
+## 2.0.0b13 - 2026-11-15 (Public beta)
 
 - Recover runnable TypeScript suites consuming shared harnesses with fair graph budgets.
 - Avoid generic-stem cross-component collisions while retaining legitimate test matches.

@@ -15,56 +15,75 @@ The GitHub Release wheel is authoritative. Select an asset that is actually atta
 do not construct or guess a download URL. Copy the exact SHA-256 published for that asset, and do
 not reuse a checksum from another version or build.
 
-The published b12 wheel is attached to the verified [v2.0.0b12 GitHub prerelease](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b12):
+The latest published beta is [v2.0.0b13](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b13), published on November 15, 2026.
+Its exact [wheel URL](https://github.com/raazlehra/Repomind/releases/download/v2.0.0b13/repomind-2.0.0b13-py3-none-any.whl) is:
 
-```text
-https://github.com/raazlehra/Repomind/releases/download/v2.0.0b12/repomind-2.0.0b12-py3-none-any.whl
-```
+~~~text
+https://github.com/raazlehra/Repomind/releases/download/v2.0.0b13/repomind-2.0.0b13-py3-none-any.whl
+~~~
 
-Its published SHA-256 is
-`34c751e3ffb893bcc07403d4bdf2f6d1c5154ac04e4afcac92bbdfadcf43b827`.
-Confirm the version and hash on the release page for every later release; do not reuse the b12
-value for another artifact.
+The wheel SHA-256 is `6152d1fa9761dd55662defe68a77d02cd50e7dd22bc4c013f62a1b7080601bd9`.
+The [source distribution](https://github.com/raazlehra/Repomind/releases/download/v2.0.0b13/repomind-2.0.0b13.tar.gz) has SHA-256
+`eae981560f5777dcac85da01d509f38c11d7937db63b0326122f42aa045a6d85`. Both values are recorded in the published
+[SHA256SUMS.txt](https://github.com/raazlehra/Repomind/releases/download/v2.0.0b13/SHA256SUMS.txt); do not reuse them for a different build.
 
-Download the exact wheel, verify it, and install it into a dedicated environment. PowerShell:
+Download the wheel above, then verify it before installing. Windows PowerShell:
 
-```powershell
-$Wheel = (Resolve-Path "C:\Downloads\repomind-2.0.0b12-py3-none-any.whl").Path
-$Expected = "34c751e3ffb893bcc07403d4bdf2f6d1c5154ac04e4afcac92bbdfadcf43b827"
-$Actual = (Get-FileHash -Algorithm SHA256 $Wheel).Hash.ToLowerInvariant()
+~~~powershell
+$Wheel = (Resolve-Path "C:\Downloads\repomind-2.0.0b13-py3-none-any.whl").Path
+$Expected = "6152d1fa9761dd55662defe68a77d02cd50e7dd22bc4c013f62a1b7080601bd9"
+$Actual = (Get-FileHash -LiteralPath $Wheel -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($Actual -ne $Expected) { throw "RepoMind wheel checksum mismatch" }
 
-py -3.12 -m venv "C:\Tools\RepoMind"
+python -m venv "C:\Tools\RepoMind"
 & "C:\Tools\RepoMind\Scripts\python.exe" -m pip install $Wheel
+& "C:\Tools\RepoMind\Scripts\python.exe" -m pip check
 & "C:\Tools\RepoMind\Scripts\python.exe" -m repomind --version
-& "C:\Tools\RepoMind\Scripts\repomind.exe" --version
-```
+~~~
 
-The explicit interpreter form does not depend on activation or an unrelated `repomind` command
-elsewhere on `PATH`. The installed distribution metadata name and CLI command are both
-`repomind`, but the name alone does not prove that the wheel came from this project.
+Use a maintained, security-patched Python 3.11+ interpreter for environment creation. The explicit environment
+interpreter avoids activation-policy changes and an unrelated command elsewhere on PATH.
+The expected version is `2.0.0b13`; the name alone does not prove the wheel's origin.
 
-On Linux or another POSIX system with `sha256sum`:
+## Install b13 on Linux
 
-```bash
-curl -fL -o repomind-2.0.0b12-py3-none-any.whl \
-  https://github.com/raazlehra/Repomind/releases/download/v2.0.0b12/repomind-2.0.0b12-py3-none-any.whl
+The following chain stops before installation if download or checksum verification fails:
+
+~~~sh
+curl -fL -o repomind-2.0.0b13-py3-none-any.whl \
+  https://github.com/raazlehra/Repomind/releases/download/v2.0.0b13/repomind-2.0.0b13-py3-none-any.whl &&
 printf '%s  %s\n' \
-  '34c751e3ffb893bcc07403d4bdf2f6d1c5154ac04e4afcac92bbdfadcf43b827' \
-  'repomind-2.0.0b12-py3-none-any.whl' | sha256sum -c -
-python3 -m venv "$HOME/.local/share/repomind-venv"
-"$HOME/.local/share/repomind-venv/bin/python" -m pip install ./repomind-2.0.0b12-py3-none-any.whl
+  '6152d1fa9761dd55662defe68a77d02cd50e7dd22bc4c013f62a1b7080601bd9' \
+  'repomind-2.0.0b13-py3-none-any.whl' | sha256sum --check - &&
+python3 -m venv "$HOME/.local/share/repomind-venv" &&
+"$HOME/.local/share/repomind-venv/bin/python" -m pip install ./repomind-2.0.0b13-py3-none-any.whl &&
+"$HOME/.local/share/repomind-venv/bin/python" -m pip check &&
 "$HOME/.local/share/repomind-venv/bin/python" -m repomind --version
-```
+~~~
 
-On macOS, compare `shasum -a 256 <wheel>` with the GitHub Release hash before installing.
+On macOS, `shasum -a 256 <wheel>` can compare the published hash, but macOS has not
+been release-validated. This checksum note does not add a macOS support claim.
 
-RepoMind requires Python 3.11+. For the b12 release, the exact-commit CI passed Linux tests on
-Python 3.11–3.13 plus installed-wheel checks on Linux and Windows. The maintainer also reports
-that the downloaded public b12 wheel passed base and Tree-sitter installed-wheel checks on
-Windows/Python 3.12.14. macOS and Python 3.14 have not been release-validated. Windows checks
-use disposable installation paths containing spaces; local/CI and public-asset validation are
-separate checks.
+## Qualification and historical releases
+
+RepoMind requires Python>=3.11; classifiers advertise 3.11-3.13 rather than every future runtime.
+The [b13 post-merge CI](https://github.com/raazlehra/Repomind/actions/runs/43707122224)
+passed Linux tests on patched Python 3.11.18, 3.12.16 and 3.13.18 (399 passed and four
+Windows-only junction skips per version), quality checks, and Linux/Windows installed-wheel
+smokes. Windows CI used Python 3.12.10 for functional package smokes. Separate local Windows
+Python 3.13.18 source and installed-wheel qualification passed 403/403; native symlink tests
+passed 19/19 with zero skips and junction tests passed 4/4. The actual published wheel was
+downloaded, hash-verified and installed in a fresh Windows Python 3.13.18 environment.
+
+macOS and Python 3.14 are not broadly release-qualified. Earlier WSL Python 3.14.4 symlink
+results do not expand the advertised Python matrix. See the [b13 notes](releases/v2.0.0b13.md)
+and [upgrade guide](UPGRADE_B13.md) for scope and limitations.
+
+[b12](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b12) remains available as a
+historical release. Its unchanged wheel SHA-256 is
+`34c751e3ffb893bcc07403d4bdf2f6d1c5154ac04e4afcac92bbdfadcf43b827`.
+Its recorded Windows/Python 3.12.14 base and Tree-sitter checks are historical b12 evidence,
+not the current b13 installation example.
 
 ## Optional dependencies
 
@@ -73,8 +92,8 @@ in the wheel metadata and can be requested from the local wheel without consulti
 RepoMind project itself:
 
 ```powershell
-& "C:\Tools\RepoMind\Scripts\python.exe" -m pip install "C:\Downloads\repomind-<version>-py3-none-any.whl[watch]"
-& "C:\Tools\RepoMind\Scripts\python.exe" -m pip install "C:\Downloads\repomind-<version>-py3-none-any.whl[treesitter]"
+& "C:\Tools\RepoMind\Scripts\python.exe" -m pip install "C:\Downloads\repomind-2.0.0b13-py3-none-any.whl[watch]"
+& "C:\Tools\RepoMind\Scripts\python.exe" -m pip install "C:\Downloads\repomind-2.0.0b13-py3-none-any.whl[treesitter]"
 ```
 
 - Without `watchdog`, event-driven `repomind watch` is unavailable. Normal indexing, explicit
@@ -82,7 +101,7 @@ RepoMind project itself:
 - Without the Tree-sitter packages, built-in deterministic parsers remain active. Tree-sitter is
   an optional source of declaration spans, not a requirement for normal indexing or retrieval.
 
-In `2.0.0b12`, tightly constrained source-anchored `.json`/`.jsonl`
+Since `2.0.0b12`, tightly constrained source-anchored `.json`/`.jsonl`
 fixture-reference analysis also requires the Tree-sitter extra. It does not follow arbitrary
 wrapper-based data flow, does not execute repository scripts, and provides structural test-impact
 evidence rather than runtime coverage. The published b11 wheel does not contain this b12 change.
@@ -130,7 +149,7 @@ repomind context "trace the authentication flow"
 `init` creates repository-local `.repomind` index data. It does not mean "install RepoMind."
 Treat `.repomind/` as local metadata and do not normally commit it.
 
-## Upgrade from b10 to b11
+## Historical upgrade from b10 to b11
 
 Back up important repository data, then install the b11 wheel into the same dedicated environment
 using its exact path:
@@ -156,7 +175,7 @@ lifecycle sequence was not repeated. The lifecycle evidence is therefore limited
 b10-to-b11 candidate path on Windows/Python 3.12.14; Linux and Windows installed-wheel CI checks
 for the final release commit passed separately. This is not a blanket compatibility promise.
 
-## b11 to b12 candidate validation
+## Historical b11-to-b12 candidate validation
 
 On 2026-10-23, release preparation used the authentic b11 GitHub Release wheel only after its
 SHA-256 matched
@@ -194,7 +213,7 @@ client's own commands only when desired.
 Reinstall the same way as the original release installation:
 
 ```powershell
-& "C:\Tools\RepoMind\Scripts\python.exe" -m pip install "C:\Downloads\repomind-<version>-py3-none-any.whl"
+& "C:\Tools\RepoMind\Scripts\python.exe" -m pip install "C:\Downloads\repomind-2.0.0b13-py3-none-any.whl"
 & "C:\Tools\RepoMind\Scripts\python.exe" -m repomind status -C "C:\path\to\repository"
 & "C:\Tools\RepoMind\Scripts\python.exe" -m repomind context "trace the authentication flow" -C "C:\path\to\repository"
 ```
@@ -211,8 +230,8 @@ record manual facts before forcing a rebuild when they must be preserved.
 After installing and initializing the target repository, see [MCP integration](MCP.md) for Codex,
 GitHub Copilot CLI, VS Code Copilot Chat, and optional Claude Code setup.
 
-## b13 candidate review
+## Current b12-to-b13 upgrade
 
-The b13 branch remains unpublished pending owner approval. See the [b13 notes](releases/v2.0.0b13.md)
-and [upgrade guide](UPGRADE_B13.md). Published b12 instructions above remain historical and
-must not be treated as b13 download or checksum instructions.
+b13 is published. Follow the [upgrade guide](UPGRADE_B13.md) using the exact
+[public b13 wheel](https://github.com/raazlehra/Repomind/releases/download/v2.0.0b13/repomind-2.0.0b13-py3-none-any.whl) and its published checksum.
+Historical b11/b12 lifecycle evidence above remains scoped to those original runs.

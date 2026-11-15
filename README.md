@@ -12,12 +12,18 @@ prerelease/hardening betas, not stable v2.0.0. Follow the
 [installation guide](docs/INSTALLATION.md), and do not use plain `pip install repomind`, because
 that PyPI distribution name belongs to another project.
 
-The current published public beta is [`v2.0.0b12`](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b12),
-released on 2026-10-23. Download its attached wheel and confirm SHA-256
-`34c751e3ffb893bcc07403d4bdf2f6d1c5154ac04e4afcac92bbdfadcf43b827` before installation. RepoMind b11 remains the historical upgrade baseline.
+The latest published public beta is [`v2.0.0b13`](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b13), published on
+November 15, 2026 as a GitHub prerelease, not stable v2.0.0. Download the
+[b13 wheel](https://github.com/raazlehra/Repomind/releases/download/v2.0.0b13/repomind-2.0.0b13-py3-none-any.whl) and verify SHA-256
+`6152d1fa9761dd55662defe68a77d02cd50e7dd22bc4c013f62a1b7080601bd9` before installation.
+The [source distribution](https://github.com/raazlehra/Repomind/releases/download/v2.0.0b13/repomind-2.0.0b13.tar.gz) and [SHA256SUMS.txt](https://github.com/raazlehra/Repomind/releases/download/v2.0.0b13/SHA256SUMS.txt) are also published.
 
-This branch prepares **v2.0.0b13** for review; b13 is not published by this PR. See the
-[b13 release notes](docs/releases/v2.0.0b13.md) and [b12 upgrade guidance](docs/UPGRADE_B13.md).
+See the [b13 release notes](docs/releases/v2.0.0b13.md) and
+[b12-to-b13 upgrade guide](docs/UPGRADE_B13.md).
+[b12](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b12), published on 2026-10-23,
+remains a historical release; its wheel SHA-256 is
+`34c751e3ffb893bcc07403d4bdf2f6d1c5154ac04e4afcac92bbdfadcf43b827`.
+b11 remains the historical upgrade baseline used during b12 qualification.
 
 Key capabilities:
 
@@ -60,16 +66,21 @@ RepoMind focuses on reusable, local, deterministic signals:
 
 Python 3.11 or newer is required.
 
-Install a wheel downloaded from the project's
-[GitHub Releases](https://github.com/raazlehra/Repomind/releases) page in an isolated environment:
+Install the [published b13 wheel](https://github.com/raazlehra/Repomind/releases/download/v2.0.0b13/repomind-2.0.0b13-py3-none-any.whl) in an isolated environment after
+verifying its checksum. Windows PowerShell:
 
-```powershell
+~~~powershell
+$WheelPath = (Resolve-Path "C:\Downloads\repomind-2.0.0b13-py3-none-any.whl").Path
+$Expected = "6152d1fa9761dd55662defe68a77d02cd50e7dd22bc4c013f62a1b7080601bd9"
+if ((Get-FileHash -LiteralPath $WheelPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $Expected) { throw "RepoMind wheel checksum mismatch" }
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install "C:\Downloads\repomind-<version>-py3-none-any.whl"
-repomind --version
-repomind --help
-```
+& ".\.venv\Scripts\python.exe" -m pip install $WheelPath
+& ".\.venv\Scripts\python.exe" -m repomind --version
+& ".\.venv\Scripts\python.exe" -m repomind --help
+~~~
+
+The expected version is `2.0.0b13`. The [installation guide](docs/INSTALLATION.md)
+contains the corresponding Linux download/checksum commands and the tested-platform limits.
 
 Do **not** use plain `pip install repomind`: that distribution name on PyPI currently resolves
 to a different project. Select an actually published RepoMind beta from the canonical
@@ -89,7 +100,7 @@ python -m pip install -e ".[dev]"
 The base package includes the local MCP server dependency. The local wheel can be installed
 with `[watch]` or `[treesitter]` extras; this keeps package resolution tied to the downloaded
 artifact instead of the unrelated PyPI project. Without `watchdog`, `repomind watch` is
-unavailable, but retrieval-time freshness checks still work. In `2.0.0b12`, without
+unavailable, but retrieval-time freshness checks still work. In `2.0.0b13`, without
 compatible Tree-sitter grammars, built-in deterministic JavaScript and TypeScript parsers remain
 active, but bounded JavaScript/TypeScript fixture-reference analysis is disabled. Download and
 checksum-verify the exact GitHub Release wheel as described in
@@ -97,7 +108,7 @@ checksum-verify the exact GitHub Release wheel as described in
 optional extra after downloading and verifying the published wheel:
 
 ```powershell
-& "C:\Tools\RepoMind\Scripts\python.exe" -m pip install "C:\Downloads\repomind-<version>-py3-none-any.whl[treesitter]"
+& "C:\Tools\RepoMind\Scripts\python.exe" -m pip install "C:\Downloads\repomind-2.0.0b13-py3-none-any.whl[treesitter]"
 ```
 
 `repomind doctor` reports whether the backend is active.
@@ -226,12 +237,12 @@ argument arrays, and repository-relative working directories as data; RepoMind n
 those commands or repository test code. A developer or trusted automation must separately review,
 approve, and execute recommendations in an appropriately trusted environment.
 
-RepoMind `2.0.0b12` recognizes Node.js built-in `.mjs` test suites, bounded multiline static
+Since `2.0.0b12`, RepoMind recognizes Node.js built-in `.mjs` test suites, bounded multiline static
 imports, and tightly constrained source-anchored `.json`/`.jsonl` fixture references when the
 optional Tree-sitter backend is active. These relationships remain structural evidence, not
 runtime coverage. Wrapper-based fixture data flow remains unsupported.
 
-In the b13 candidate, component-aware matching and shared-harness recovery improve
+In `2.0.0b13`, component-aware matching and shared-harness recovery improve
 Python/TypeScript selection. Go changed test files are recognized, but Go dependency graphs,
 runner integration and native test selection remain unsupported; production coverage is unknown
 and no Go test command is fabricated. Pinned benchmarks and platform qualification limits
