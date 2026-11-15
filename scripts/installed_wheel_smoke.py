@@ -16,6 +16,9 @@ def run(
     cwd: Path,
     timeout: int = 180,
 ) -> subprocess.CompletedProcess[str]:
+    environment = os.environ.copy()
+    environment.pop("PYTHONPATH", None)
+    environment.pop("PYTHONHOME", None)
     return subprocess.run(
         command,
         cwd=cwd,
@@ -23,6 +26,7 @@ def run(
         capture_output=True,
         text=True,
         timeout=timeout,
+        env=environment,
     )
 
 
@@ -45,8 +49,8 @@ def environment_python(environment: Path) -> Path:
     return environment / relative
 
 
-def environment_cli(environment: Path) -> Path:
-    relative = Path("Scripts/repomind.exe") if os.name == "nt" else Path("bin/repomind")
+def environment_cli(environment: Path, name: str = "repomind") -> Path:
+    relative = Path(f"Scripts/{name}.exe") if os.name == "nt" else Path(f"bin/{name}")
     return environment / relative
 
 
@@ -102,15 +106,16 @@ readFileSync(join(CORPUS, 'fixture.jsonl'), 'utf8');
 
 
 def execute_smoke(
-    wheel: Path, root: Path, *, treesitter: bool = False
+    wheel: Path, root: Path, *, treesitter: bool = False, watch: bool = False
 ) -> dict[str, object]:
     environment = root / "Installed Wheel Environment With Spaces"
-    venv.EnvBuilder(with_pip=True, clear=True).create(environment)
+    if environment.exists():
+        raise ValueError("smoke environment must not already exist")
+    venv.EnvBuilder(with_pip=True).create(environment)
     python = environment_python(environment)
     cli = environment_cli(environment)
-    install_target = (
-        f"repomind[treesitter] @ {wheel.as_uri()}" if treesitter else str(wheel)
-    )
+    extras = [name for name, selected in (("treesitter", treesitter), ("watch", watch)) if selected]
+    install_target = f"repomind[{','.join(extras)}] @ {wheel.as_uri()}" if extras else str(wheel)
     run(
         [
             str(python),
@@ -211,6 +216,27 @@ def execute_smoke(
     if impact.get("schema_version") != "repomind.test-impact.v1":
         raise RuntimeError("installed CLI test-impact returned an unexpected schema")
 
+    cli_results = {}
+    for name in ("repomind", "lehraz-atlas"):
+        executable = environment_cli(environment, name)
+        version = run([str(executable), "--version"], cwd=root).stdout.strip()
+        if expected_version not in version or "Lehraz Atlas Free" not in version:
+            raise RuntimeError(f"{name} has incorrect display/version output")
+        run([str(executable), "--help"], cwd=root)
+        cli_status = json_command(
+            [str(executable), "status", "-C", str(repository), "--format", "json"], cwd=root
+        )
+        cli_impact = json_command(
+            [str(executable), "test-impact", "src/app.py", "-C", str(repository), "--format", "json"],
+            cwd=root,
+        )
+        if cli_status.get("index_healthy") is not True or cli_impact.get("schema_version") != "repomind.test-impact.v1":
+            raise RuntimeError(f"{name} did not preserve CLI/JSON compatibility")
+        cli_results[name] = "ok"
+    watcher = next(item for item in doctor["checks"] if item["check"] == "watcher")
+    if (watcher["status"] == "ok") != watch:
+        raise RuntimeError("watch extra availability does not match the clean installation")
+
     fixture_edges = [
         evidence
         for test in fixture_impact.get("existing_tests", [])
@@ -228,6 +254,7 @@ def execute_smoke(
         [
             str(python),
             str(probe_script),
+            "--exercise-all",
             "--server-python",
             str(python),
             "--repository",
@@ -235,6 +262,8 @@ def execute_smoke(
         ],
         cwd=root,
     )
+    if len(mcp.get("legacy_tool_calls", [])) != 12:
+        raise RuntimeError("installed MCP smoke did not exercise all 12 legacy tools")
     return {
         "wheel": wheel.name,
         "version": expected_version,
@@ -242,6 +271,8 @@ def execute_smoke(
         "module_path": str(module_path),
         "explicit_interpreter": "ok",
         "cli_entrypoint": "ok",
+        "console_scripts": cli_results,
+        "watch_extra": watch,
         "path_with_spaces": "ok",
         "init_indexed_files": initialized.get("indexed_files"),
         "status": "ok",
@@ -255,9 +286,10 @@ def execute_smoke(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Smoke-test a built RepoMind wheel")
+    parser = argparse.ArgumentParser(description="Smoke-test a built Lehraz Atlas Free wheel")
     parser.add_argument("--wheel", type=Path, required=True)
     parser.add_argument("--work-dir", type=Path)
+    parser.add_argument("--watch", action="store_true", help="install and verify the watchdog extra")
     parser.add_argument(
         "--treesitter",
         action="store_true",
@@ -269,11 +301,11 @@ def main() -> int:
     if args.work_dir is not None:
         args.work_dir.mkdir(parents=True, exist_ok=True)
         result = execute_smoke(
-            wheel, args.work_dir.resolve(), treesitter=args.treesitter
+            wheel, args.work_dir.resolve(), treesitter=args.treesitter, watch=args.watch
         )
     else:
         with tempfile.TemporaryDirectory(prefix="repomind release smoke ") as temporary:
-            result = execute_smoke(wheel, Path(temporary), treesitter=args.treesitter)
+            result = execute_smoke(wheel, Path(temporary), treesitter=args.treesitter, watch=args.watch)
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
 

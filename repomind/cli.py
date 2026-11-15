@@ -55,7 +55,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="repomind",
         description="Local-first persistent code context engine for AI coding agents.",
     )
-    parser.add_argument("--version", action="version", version=f"RepoMind {__version__}")
+    parser.add_argument("--version", action="version", version=f"Lehraz Atlas Free {__version__} (formerly RepoMind)")
     parser.add_argument(
         "--verbose", action="store_true", help="show tracebacks for unexpected errors"
     )
@@ -64,7 +64,7 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser = subparsers.add_parser("init", help="scan and initialize a repository index")
     init_parser.add_argument("path", nargs="?", default=".")
     init_parser.add_argument(
-        "--force", action="store_true", help="replace an existing RepoMind index"
+        "--force", action="store_true", help="replace an existing Lehraz Atlas Free index"
     )
     init_parser.add_argument("--format", choices=_FORMATS, default="text")
 
@@ -213,7 +213,7 @@ def build_parser() -> argparse.ArgumentParser:
     install_parser.add_argument("path", nargs="?", default=".")
     install_parser.add_argument("--format", choices=_FORMATS, default="text")
 
-    mcp_parser = subparsers.add_parser("mcp", help="run the local RepoMind MCP server")
+    mcp_parser = subparsers.add_parser("mcp", help="run the local Lehraz Atlas Free MCP server")
     mcp_parser.add_argument("--debug", action="store_true", help="include debug details in MCP errors")
     return parser
 
@@ -230,7 +230,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         return _dispatch(args)
     except (RepoMindError, ValueError) as exc:
-        print(f"RepoMind error: {exc}", file=sys.stderr)
+        print(f"Lehraz Atlas Free error: {exc}", file=sys.stderr)
         return 2
     except KeyboardInterrupt:
         print("Stopped.", file=sys.stderr)
@@ -239,7 +239,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if bool(getattr(args, "verbose", False)):
             traceback.print_exc()
         else:
-            print(f"RepoMind error: {exc}. Re-run with --verbose for details.", file=sys.stderr)
+            print(f"Lehraz Atlas Free error: {exc}. Re-run with --verbose for details.", file=sys.stderr)
         return 1
 
 
@@ -502,7 +502,7 @@ def _progress_callback() -> ProgressCallback | None:
 
 def _warn_if_partial(freshness: FreshnessResult) -> None:
     if freshness.warning:
-        print(f"RepoMind warning: {freshness.warning}", file=sys.stderr)
+        print(f"Lehraz Atlas Free warning: {freshness.warning}", file=sys.stderr)
 
 
 if __name__ == "__main__":

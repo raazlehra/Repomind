@@ -99,7 +99,7 @@ async def test_mcp_context_explain_and_stats(python_repo: Path) -> None:
 
     assert explained["context"]["relevant_files"][0]["explanations"]
     assert explained["context"]["metrics"]["task_context"]["estimated_context_tokens"] > 0
-    assert stats["title"] == "RepoMind Repository Intelligence"
+    assert stats["title"] == "Lehraz Atlas Free Repository Intelligence"
 
 
 @pytest.mark.anyio

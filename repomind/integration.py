@@ -10,36 +10,36 @@ AGENTS_END = "<!-- REPOMIND-INSTRUCTIONS-END -->"
 
 SKILL_CONTENT = f"""---
 name: repomind
-description: Use RepoMind's local persistent index for focused repository discovery before broad scans.
+description: Use Lehraz Atlas Free's local persistent index for focused repository discovery before broad scans.
 ---
 
 {SKILL_BEGIN}
-# RepoMind repository discovery
+# Lehraz Atlas Free (formerly RepoMind) repository discovery
 
-Before broadly scanning a repository for a coding task, check whether RepoMind is initialized. If RepoMind MCP tools are available, prefer them over shelling out to the CLI.
+Before broadly scanning a repository for a coding task, check whether Lehraz Atlas Free is initialized. If Lehraz Atlas Free MCP tools are available, prefer them over shelling out to the CLI.
 
-If RepoMind is available:
+If Lehraz Atlas Free is available:
 
 1. Call `repomind_status` for the explicit repository path.
 2. Call `repomind_context` with `level=1` for the user task.
 3. Use selected files, symbols, and relationships for targeted discovery.
 4. Read the actual source code for every file that will be modified. Source code is authoritative.
 5. Query deeper details only when needed: `repomind_symbol`, `repomind_dependencies`, `repomind_callers`, `repomind_impact`, or `repomind_snippets`.
-6. Do not treat RepoMind summaries as replacements for source inspection.
-7. Do not scan the entire repository when high-confidence RepoMind output is sufficient.
-8. Broaden inspection when RepoMind reports low confidence or unresolved relationships.
+6. Do not treat Lehraz Atlas Free summaries as replacements for source inspection.
+7. Do not scan the entire repository when high-confidence Lehraz Atlas Free output is sufficient.
+8. Broaden inspection when Lehraz Atlas Free reports low confidence or unresolved relationships.
 9. After significant changes, call `repomind_refresh` unless watch mode is active.
 
 If MCP tools are unavailable, use the equivalent CLI fallback: `repomind status`, `repomind context "<user task>" --format markdown`, and deeper `repomind symbol/callers/dependencies/impact/snippets` commands as needed.
 
-RepoMind is a navigation and context-retrieval aid. It must never prevent necessary source reads or safety checks.
+Lehraz Atlas Free is a navigation and context-retrieval aid. It must never prevent necessary source reads or safety checks.
 {SKILL_END}
 """
 
 AGENTS_SECTION = f"""{AGENTS_BEGIN}
-## RepoMind
+## Lehraz Atlas Free
 
-Use RepoMind for initial codebase discovery and task-specific context retrieval before broad repository scans. When MCP tools are available, start with `repomind_status`, then `repomind_context` at level 1, and query deeper tools only as needed. Always inspect actual source files before modifying them. If MCP is unavailable, use the equivalent `repomind status` and `repomind context "<task>"` CLI flow. Refresh RepoMind after significant changes when watch mode is not active.
+Use Lehraz Atlas Free for initial codebase discovery and task-specific context retrieval before broad repository scans. When MCP tools are available, start with `repomind_status`, then `repomind_context` at level 1, and query deeper tools only as needed. Always inspect actual source files before modifying them. If MCP is unavailable, use the equivalent `repomind status` and `repomind context "<task>"` CLI flow. Refresh Lehraz Atlas Free after significant changes when watch mode is not active.
 {AGENTS_END}"""
 
 
@@ -59,11 +59,19 @@ def install_codex(root: Path) -> InstallResult:
         skill_action = "created"
     else:
         existing_skill = skill_path.read_text(encoding="utf-8", errors="replace")
-        if SKILL_BEGIN in existing_skill and SKILL_END in existing_skill:
-            if existing_skill == SKILL_CONTENT:
+        begin = existing_skill.find(SKILL_BEGIN)
+        end = existing_skill.find(SKILL_END)
+        if (
+            existing_skill.count(SKILL_BEGIN) == 1
+            and existing_skill.count(SKILL_END) == 1
+            and 0 <= begin < end
+        ):
+            managed = SKILL_CONTENT.split(SKILL_BEGIN, 1)[1].split(SKILL_END, 1)[0]
+            updated = existing_skill[: begin + len(SKILL_BEGIN)] + managed + existing_skill[end:]
+            if existing_skill == updated:
                 skill_action = "unchanged"
             else:
-                skill_path.write_text(SKILL_CONTENT, encoding="utf-8")
+                skill_path.write_text(updated, encoding="utf-8")
                 skill_action = "updated RepoMind-managed skill"
         else:
             skill_action = "preserved existing unmanaged skill"

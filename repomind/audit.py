@@ -97,17 +97,17 @@ def build_audit_report(database: IndexDatabase, task: str | None = None) -> dict
             "important_symbols": fitted_context.get("important_symbols", []),
             "likely_modification_area": fitted_context.get("likely_modification_area", []),
         },
-        "source_authority": "RepoMind audit reports guide discovery; inspect actual source before modification.",
+        "source_authority": "Lehraz Atlas Free audit reports guide discovery; inspect actual source before modification.",
     }
 
 
 def render_audit_markdown(report: dict[str, Any]) -> str:
     summary = report["summary"]
     lines = [
-        "# RepoMind Repository Audit",
+        "# Lehraz Atlas Free Repository Audit",
         "",
         f"Repository: `{report['repository']}`",
-        f"RepoMind version: `{report['repomind_version']}`",
+        f"Lehraz Atlas Free version: `{report['repomind_version']}`",
         "",
         "## Executive Summary",
         "",
@@ -334,7 +334,7 @@ def _risk_findings(
                 "Parse errors can hide symbols, routes, and risk evidence.",
                 f"{len(parse_errors)} indexed file(s) have parse errors.",
                 [{"path": item["path"], "line": None, "snippet": item["error"]} for item in parse_errors],
-                "Fix parser failures or reindex after upgrading RepoMind before relying on audit coverage.",
+                "Fix parser failures or reindex after upgrading Lehraz Atlas Free before relying on audit coverage.",
             )
         )
     return sorted(findings, key=lambda item: (_severity_rank(item["severity"]), item["id"]))
@@ -527,7 +527,7 @@ def _detect_parent_provisioning_email_mismatch(
             "medium",
             "account-provisioning",
             "Parent provisioning email fields need explicit mismatch validation.",
-            "Backend parent invite/provisioning code accepts or uses parent email fields, but RepoMind "
+            "Backend parent invite/provisioning code accepts or uses parent email fields, but Lehraz Atlas Free "
             "did not find clear backend mismatch validation or mismatch tests.",
             evidence,
             "Validate that the invited parent email, created user email, and activation recipient "

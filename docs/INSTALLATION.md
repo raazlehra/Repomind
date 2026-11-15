@@ -1,5 +1,11 @@
 # Installation and Lifecycle
 
+Lehraz Atlas Free is formerly RepoMind. The distribution, import module and existing
+commands remain `repomind`; the unpublished Phase 1 candidate adds `lehraz-atlas`.
+Published b13 installation examples below remain historical RepoMind artifacts and
+must use their exact filenames and SHA-256. The candidate is not a PyPI package.
+See [Phase 1 compatibility](LEHRAZ_ATLAS_PHASE1.md).
+
 RepoMind is distributed through [GitHub Releases](https://github.com/raazlehra/Repomind/releases).
 That page is authoritative for which beta versions and assets have actually been published.
 Source metadata or candidate documentation alone does not establish publication.
@@ -127,7 +133,7 @@ resulting wheel in a separate disposable environment:
 
 ```powershell
 python -m build
-python -m pip install "dist\repomind-2.0.0b13-py3-none-any.whl"
+python -m pip install "dist\repomind-2.0.0b14-py3-none-any.whl"
 ```
 
 Building locally does not publish a release. Do not describe any locally built wheel as a

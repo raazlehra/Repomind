@@ -1,5 +1,9 @@
 # Release Process
 
+The unpublished Lehraz Atlas Free Phase 1 candidate is described in
+[the compatibility plan](LEHRAZ_ATLAS_PHASE1.md). The release records below retain
+the original RepoMind names and hashes. Do not rebuild or replace those assets.
+
 ## Current published public beta: v2.0.0b13 (2026-11-15)
 
 [RepoMind v2.0.0b13](https://github.com/raazlehra/Repomind/releases/tag/v2.0.0b13) was published on November 15, 2026 as a GitHub
@@ -106,7 +110,10 @@ run the lifecycle smoke with the locally built future candidate:
 ```text
 python scripts/release_lifecycle_smoke.py \
   --baseline-wheel <baseline-wheel> \
-  --candidate-wheel <candidate-wheel>
+  --candidate-wheel <candidate-wheel> \
+  --baseline-version 2.0.0b13 \
+  --candidate-version 2.0.0b14 \
+  --baseline-sha256 6152d1fa9761dd55662defe68a77d02cd50e7dd22bc4c013f62a1b7080601bd9
 ```
 
 The lifecycle uses only disposable environments and repositories. It initializes with the

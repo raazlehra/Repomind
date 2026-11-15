@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "repomind"
-version = "2.0.0b13"
-description = "Local-first repository intelligence for code search, dependency analysis, and change impact"
+version = "2.0.0b14"
+description = "Lehraz Atlas Free: local-first repository intelligence (formerly RepoMind)"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
@@ -46,6 +46,7 @@ dev = [
 
 [project.scripts]
 repomind = "repomind.cli:main"
+lehraz-atlas = "repomind.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["repomind*"]

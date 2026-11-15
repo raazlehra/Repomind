@@ -111,7 +111,7 @@ def stats(repository: str) -> dict[str, Any]:
         route_row = database.connection.execute("SELECT COUNT(*) FROM routes").fetchone()
         repository_text_bytes = int(total_row["total_bytes"]) if total_row else 0
         return {
-            "title": "RepoMind Repository Intelligence",
+            "title": "Lehraz Atlas Free Repository Intelligence",
             "repository": str(root),
             "indexed_files": counts["files"],
             "symbols": counts["symbols"],
@@ -348,7 +348,7 @@ def error_payload(exc: Exception, debug: bool = False) -> dict[str, Any]:
     elif isinstance(exc, RepoMindError):
         payload = {"error": "repomind_error", "message": str(exc)}
     else:
-        payload = {"error": "internal_error", "message": "RepoMind MCP request failed."}
+        payload = {"error": "internal_error", "message": "Lehraz Atlas Free MCP request failed."}
     if debug:
         payload["debug"] = repr(exc)
     return payload

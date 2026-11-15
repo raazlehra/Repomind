@@ -104,7 +104,7 @@ class ContextPack:
     nearby_dependencies: list[dict[str, Any]] = field(default_factory=list)
     snippets: list[dict[str, Any]] = field(default_factory=list)
     source_authority: str = (
-        "RepoMind summaries guide discovery; inspect actual source before modification."
+        "Lehraz Atlas Free summaries guide discovery; inspect actual source before modification."
     )
 
     def as_dict(self, *, explain: bool = False) -> dict[str, Any]:

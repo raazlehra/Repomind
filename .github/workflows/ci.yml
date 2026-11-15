@@ -69,6 +69,12 @@ jobs:
         run: python scripts/installed_wheel_smoke.py --wheel dist
       - name: Smoke-test the optional Tree-sitter backend
         run: python scripts/installed_wheel_smoke.py --wheel dist --treesitter
+      - name: Smoke-test the optional watch backend
+        run: python scripts/installed_wheel_smoke.py --wheel dist --watch
+      - name: Verify b13 upgrade and rollback
+        run: python scripts/compatibility_lifecycle_smoke.py --candidate-wheel dist/repomind-2.0.0b14-py3-none-any.whl --candidate-version 2.0.0b14
+      - name: Verify editable and source distribution installations
+        run: python scripts/source_install_smoke.py --sdist dist/repomind-2.0.0b14.tar.gz
 
   windows-wheel-smoke:
     name: windows-wheel-smoke
@@ -96,3 +102,7 @@ jobs:
         run: python scripts/installed_wheel_smoke.py --wheel dist
       - name: Smoke-test the optional Tree-sitter backend
         run: python scripts/installed_wheel_smoke.py --wheel dist --treesitter
+      - name: Smoke-test the optional watch backend
+        run: python scripts/installed_wheel_smoke.py --wheel dist --watch
+      - name: Verify b13 upgrade and rollback
+        run: python scripts/compatibility_lifecycle_smoke.py --candidate-wheel dist/repomind-2.0.0b14-py3-none-any.whl --candidate-version 2.0.0b14

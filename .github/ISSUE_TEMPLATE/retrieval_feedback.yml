@@ -1,5 +1,5 @@
 name: Retrieval feedback
-description: Share how RepoMind context, ranking, freshness, or memory behaved on a real task.
+description: Share how Lehraz Atlas Free context, ranking, freshness, or memory behaved on a real task.
 title: "[Retrieval]: "
 labels:
   - retrieval-feedback
@@ -19,7 +19,7 @@ body:
     id: expected_files
     attributes:
       label: Expected files
-      description: List the files you expected RepoMind to select. Redact proprietary path segments if needed.
+      description: List the files you expected Lehraz Atlas Free to select. Redact proprietary path segments if needed.
       placeholder: "backend/routes.py, backend/services.py, tests/test_auth.py"
     validations:
       required: true
@@ -27,7 +27,7 @@ body:
     id: selected_files
     attributes:
       label: Selected files
-      description: List the files RepoMind selected. Redact proprietary path segments if needed.
+      description: List the files Lehraz Atlas Free selected. Redact proprietary path segments if needed.
       placeholder: "backend/routes.py, backend/models.py, tests/test_auth.py"
     validations:
       required: true

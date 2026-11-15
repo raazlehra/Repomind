@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from repomind.branding import optional_installation_hint
 from repomind.config import Config
 from repomind.database import SCHEMA_VERSION, IndexDatabase
 from repomind.errors import RepoMindError
@@ -61,14 +62,14 @@ def run_doctor(root: Path) -> dict[str, Any]:
                 else "not installed; built-in deterministic parsers are active"
             )
         ),
-        "Optional: pip install 'repomind[treesitter]'" if not tree_sitter_languages else "none",
+        optional_installation_hint("treesitter") if not tree_sitter_languages else "none",
     )
     native_watch = watchdog_available()
     add(
         "watcher",
         "ok" if native_watch else "warning",
         "event-driven watchdog backend" if native_watch else "event-driven backend not installed",
-        "Install: pip install 'repomind[watch]'" if not native_watch else "none",
+        optional_installation_hint("watch") if not native_watch else "none",
     )
     git = shutil.which("git")
     add(

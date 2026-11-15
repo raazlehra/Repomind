@@ -12,7 +12,7 @@ from repomind.test_impact import TestImpactLimits
 ToolHandler = Callable[..., dict[str, Any]]
 
 
-INSTRUCTIONS = """RepoMind is a local-first static-analysis discovery accelerator.
+INSTRUCTIONS = """Lehraz Atlas Free (formerly RepoMind) is a local-first static-analysis discovery accelerator.
 Use repomind_context at level 1 first, inspect actual source before edits, and ask
 for deeper symbols, callers, dependencies, impact, or snippets only when needed."""
 
@@ -20,7 +20,7 @@ for deeper symbols, callers, dependencies, impact, or snippets only when needed.
 def create_server(debug: bool = False) -> MCPServer:
     server = MCPServer(
         name="repomind",
-        title="RepoMind",
+        title="Lehraz Atlas Free",
         version=__version__,
         instructions=INSTRUCTIONS,
         debug=debug,

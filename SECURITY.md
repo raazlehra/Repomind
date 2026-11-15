@@ -1,10 +1,10 @@
-# RepoMind security and privacy
+# Lehraz Atlas Free security and privacy
 
 ## Security model
 
-RepoMind treats every repository as untrusted input. Indexing is static analysis only.
+Lehraz Atlas Free treats every repository as untrusted input. Indexing is static analysis only.
 
-During normal analysis, RepoMind core does not:
+During normal analysis, Lehraz Atlas Free core does not:
 
 - execute, import, evaluate, compile, or build repository source;
 - use `eval`, `exec`, dynamic repository imports, or shell interpolation;
@@ -24,8 +24,8 @@ execution but do not eliminate races with an actor concurrently changing Git con
 or attributes.
 
 MCP clients and coding agents are separate trust boundaries. They may transmit metadata,
-recommended-command data, or bounded snippets requested from RepoMind to their configured
-provider. RepoMind returns test commands as data and never executes those recommendations.
+recommended-command data, or bounded snippets requested from Lehraz Atlas Free to their configured
+provider. Lehraz Atlas Free returns test commands as data and never executes those recommendations.
 
 Expected parser recursion and memory failures are recorded as per-file parse errors;
 an interrupted traversal does not retain incomplete symbols or relationships. This
@@ -51,7 +51,7 @@ id_rsa*
 id_ed25519*
 ```
 
-These are defense-in-depth heuristics, not a complete secret detector. Do not rely on RepoMind as a secrets scanner. Repository operators should add project-specific patterns to `.repomindignore` or `secret_patterns`.
+These are defense-in-depth heuristics, not a complete secret detector. Do not rely on Lehraz Atlas Free as a secrets scanner. Repository operators should add project-specific patterns to `.repomindignore` or `secret_patterns`.
 
 `include` rules never bypass secret, binary, size, symlink, `.git`, or `.repomind` protections.
 
@@ -92,10 +92,10 @@ repomind doctor
 repomind init --force
 ```
 
-`--force` removes RepoMind's SQLite database files only, not arbitrary repository files. It
+`--force` removes Lehraz Atlas Free's SQLite database files only, not arbitrary repository files. It
 rebuilds the index from source and therefore removes manual memory stored only in that database.
 Export or record manual facts before a forced rebuild when they must be preserved.
-Before opening or rebuilding, RepoMind checks `.repomind`, the database, and its
+Before opening or rebuilding, Lehraz Atlas Free checks `.repomind`, the database, and its
 WAL, SHM and rollback-journal paths. Symlinks, Windows reparse points, hardlinked
 database files and special files are rejected. A rebuild checks all paths before
 deleting any cache file. These checks narrow the attack surface but do not eliminate time-of-check
@@ -108,7 +108,7 @@ Windows junction behavior must be verified during platform release checks.
 
 Automatic memory must not capture secret values. Evidence paths are checked against secret-like names including `.env`, `.env.*`, `*.pem`, `*.key`, credential files, secret files, and private-key names. Included files do not bypass those protections.
 
-Evidence hashes are computed from indexed file hashes so validation can detect changed evidence without rereading the whole repository. If evidence changes, automatic memory is marked `needs_validation`; if evidence disappears, it is marked `stale`. RepoMind marks uncertainty instead of keeping automatic facts silently valid.
+Evidence hashes are computed from indexed file hashes so validation can detect changed evidence without rereading the whole repository. If evidence changes, automatic memory is marked `needs_validation`; if evidence disappears, it is marked `stale`. Lehraz Atlas Free marks uncertainty instead of keeping automatic facts silently valid.
 
 ## Reporting vulnerabilities
 
@@ -118,4 +118,4 @@ visible to repository maintainers rather than being opened as a public issue.
 
 Do not upload private repository source, a real index database, secrets, sensitive screenshots,
 or exploit details to a public issue. A public bug report must use a minimal sanitized synthetic
-reproduction and may include the RepoMind version, Python version, platform, and command used.
+reproduction and may include the Lehraz Atlas Free version, Python version, platform, and command used.
