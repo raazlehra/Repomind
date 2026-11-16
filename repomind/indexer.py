@@ -19,10 +19,12 @@ from repomind.database import (
 )
 from repomind.errors import RepoMindError
 from repomind.git import inspect_git
+from repomind.go_analysis import go_graph_needs_refresh
 from repomind.graph import rebuild_dependency_graph
 from repomind.memory import sync_automatic_memory
 from repomind.models import ChangeSet, ScannedFile
 from repomind.parsers import ParserRegistry
+from repomind.parsers.go import GO_REVISION, is_go_path
 from repomind.scanner import RepositoryScanner
 from repomind.utils import hash_file
 
@@ -108,12 +110,16 @@ class Indexer:
         modified: set[str] = set()
         metadata_only: list[str] = []
         hashes: dict[str, str] = {}
+        go_refresh = any(is_go_path(path) for path in indexed) and go_graph_needs_refresh(database)
         for path in set(scanned) & set(indexed):
             current = scanned[path]
             previous = indexed[path]
             digest = hash_file(current.absolute_path)
             hashes[path] = digest
-            if digest != str(previous["content_hash"]):
+            if digest != str(previous["content_hash"]) or (
+                is_go_path(path)
+                and (go_refresh or not str(previous["summary"]).startswith(GO_REVISION))
+            ):
                 modified.add(path)
             elif current.size != int(previous["size"]) or current.mtime_ns != int(
                 previous["mtime_ns"]
@@ -155,7 +161,8 @@ class Indexer:
         with IndexDatabase(self.root) as database:
             detection = self.detect_changes(database)
             changes = detection.changes
-            to_parse = [*changes.created, *changes.modified]
+            to_parse = [*changes.created, *changes.modified,
+                        *(new for old, new in changes.renamed if is_go_path(old) or is_go_path(new))]
             with database.transaction():
                 for old, new in changes.renamed:
                     database.rename_file(old, detection.scanned[new])

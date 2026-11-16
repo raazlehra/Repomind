@@ -5,9 +5,10 @@ Local-first repository intelligence for developers.
 Index once. Understand everywhere.
 
 Lehraz Atlas Free is the Apache-2.0 open-source product formerly called **RepoMind**,
-under the Lehraz parent brand. This branch is an **unpublished compatibility
-implementation**; its inherited `2.0.0b14` development metadata is not release
-approval. b14 retains its agreed Go language intelligence scope. The latest public
+under the Lehraz parent brand. This branch is an **unpublished b14 Stage A
+implementation** adding bounded local Go intelligence. Its inherited `2.0.0b14`
+development metadata is not release approval. Stage B configuration intelligence
+remains separate. The latest public
 wheel remains RepoMind b13 and retains
 its original filename, checksum and output. No repository rename or PyPI publication
 has occurred.
@@ -267,6 +268,12 @@ runner integration and native test selection remain unsupported; production cove
 and no Go test command is fabricated. Pinned benchmarks and platform qualification limits
 are documented in the [b13 notes](docs/releases/v2.0.0b13.md).
 
+The unpublished b14 Stage A adds Go package/import extraction, local `go.mod` and
+`go.work` relationships, package-level test selection and conservative `go test`
+recommendations. It runs no Go tooling, downloads no modules and keeps runtime
+coverage unknown. Missing/ambiguous manifests, build-constrained changes, cgo and
+other unqualified cases remain explicit. See [Go capabilities and limits](docs/B14_GO_INTELLIGENCE.md).
+
 See the [sanitized sample test-impact report](docs/SAMPLE_TEST_IMPACT_REPORT.md) for a
 reproducible synthetic example and guidance on interpreting evidence and limits.
 
@@ -373,7 +380,13 @@ First-class extraction:
 
 Conservative fallback extraction:
 
-- Java, Go, Rust, C#, C, and C++
+- Java, Rust, C#, C, and C++
+
+Bounded local Go extraction (unpublished b14 Stage A):
+
+- Package clauses, imports, declarations, local module/workspace relationships,
+  package test evidence and package command planning. This is not a Go type checker,
+  build-system evaluator, call graph, runtime-coverage measurement or command executor.
 
 Additional basic file recognition:
 

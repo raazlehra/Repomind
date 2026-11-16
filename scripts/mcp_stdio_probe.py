@@ -10,6 +10,11 @@ from typing import Literal
 
 from mcp import Client, StdioServerParameters
 
+if __package__:
+    from .go_smoke_fixture import assert_go_plan
+else:
+    from go_smoke_fixture import assert_go_plan
+
 
 def server_command(
     server_python: Path, mode: Literal["module", "repomind", "atlas"]
@@ -80,7 +85,16 @@ async def probe(
                 raise RuntimeError(f"{name} returned a structured error")
             payloads[name] = result.structured_content
         validation_checks = []
+        go_analysis = "not_requested"
         if exercise_all:
+            if (repository / "gopkg/math.go").is_file():
+                result = await client.call_tool(f"{prefix}_test_impact", {
+                    "repository": str(repository), "changed_files": ["gopkg/math.go"]
+                })
+                if result.is_error:
+                    raise RuntimeError("Go stdio analysis returned an MCP error")
+                assert_go_plan(result.structured_content)
+                go_analysis = "ok"
             for invalid in ({"max_commands": True}, {"max_commands": "2"}, {"execute": True}):
                 result = await client.call_tool(
                     f"{prefix}_test_impact", {"repository": str(repository), **invalid}
@@ -109,6 +123,7 @@ async def probe(
         "mode": mode,
         "input_schemas": schemas,
         "strict_validation_checks": validation_checks,
+        "go_package_analysis": go_analysis,
         "status": "ok",
     }
 

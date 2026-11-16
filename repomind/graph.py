@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from pathlib import PurePosixPath
 
 from repomind.database import IndexDatabase
+from repomind.go_analysis import GoTopology
 
 _CODE_EXTENSIONS = (
     ".py",
@@ -41,6 +42,9 @@ def rebuild_dependency_graph(database: IndexDatabase) -> None:
            FROM imports JOIN files ON files.id = imports.file_id"""
     ):
         source_id = int(imported["file_id"])
+        if imported["source_language"] == "go":
+            # A package can contain many files; resolved_file_id cannot represent it.
+            continue
         target_id = _resolve_module(
             str(imported["module"]),
             str(imported["source_path"]),
@@ -86,6 +90,8 @@ def rebuild_dependency_graph(database: IndexDatabase) -> None:
         by_name.setdefault(str(symbol["name"]), []).append(symbol)
 
     for reference in connection.execute('SELECT * FROM "references"'):
+        if str(reference["kind"]).startswith("go-"):
+            continue
         source_file_id = int(reference["file_id"])
         target_text = str(reference["target"])
         candidates = _symbol_candidates(target_text, by_exact, by_name)
@@ -137,6 +143,12 @@ def rebuild_dependency_graph(database: IndexDatabase) -> None:
             confidence,
             f"static:{reference['evidence']}",
         )
+
+    go = GoTopology(database)
+    go_edges = go.edges()
+    for source_id, target_id, kind, confidence, evidence in go_edges:
+        _insert_dependency(connection, source_id, target_id, None, None, kind, confidence, evidence)
+    go.save(len(go_edges))
 
 
 def _resolve_module(

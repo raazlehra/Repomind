@@ -12,6 +12,11 @@ from contextlib import closing
 from pathlib import Path
 from typing import Any
 
+if __package__:
+    from .go_smoke_fixture import assert_go_plan, create_go_fixture
+else:
+    from go_smoke_fixture import assert_go_plan, create_go_fixture
+
 MEMORY_KEY = "release.lifecycle.marker"
 MEMORY_VALUE = "Release lifecycle manual memory must survive package upgrades."
 
@@ -64,6 +69,7 @@ def create_repository(root: Path, name: str) -> Path:
     (repository / ".repomindignore").write_text("ignored.py\n", encoding="utf-8")
     (repository / ".gitignore").write_text(".repomind/\n", encoding="utf-8")
     (repository / "ignored.py").write_text("# must remain excluded\n", encoding="utf-8")
+    create_go_fixture(repository)
     run(["git", "init", "--quiet"], cwd=repository)
     run(["git", "config", "user.email", "lifecycle@example.invalid"], cwd=repository)
     run(["git", "config", "user.name", "RepoMind Lifecycle Smoke"], cwd=repository)
@@ -77,6 +83,7 @@ def create_repository(root: Path, name: str) -> Path:
             "ignored.py",
             "src/calculator.py",
             "tests/test_calculator.py",
+            "go.mod", "gopkg/math.go", "gopkg/math_test.go",
         ],
         cwd=repository,
     )
@@ -273,6 +280,12 @@ def execute(
     )
     before = database_state(repository)
     baseline_queries = exercise_queries(python, repository, root)
+    def go_query(supported: bool) -> dict[str, str]:
+        payload = json_command([str(python), "-m", "repomind", "test-impact", "gopkg/math.go", "-C", str(repository), "--format", "json"], cwd=root)
+        assert_go_plan(payload, supported=supported)
+        return {"go_analysis": "qualified local package" if supported else "unsupported baseline", "commands_executed": "never"}
+
+    baseline_go = go_query(False)
     contract = repository_contract(repository)
     database = repository / ".repomind" / "index.sqlite3"
     database_hash = hashlib.sha256(database.read_bytes()).hexdigest()
@@ -283,6 +296,7 @@ def execute(
         raise RuntimeError("package upgrade changed existing index bytes before any query")
     after_upgrade = database_state(repository)
     candidate_queries = exercise_queries(python, repository, root)
+    candidate_go = go_query(True)
     for key in ("schema_version", "repository_root", "created_at", "marker_count"):
         if before[key] != after_upgrade[key]:
             raise RuntimeError(f"index state changed unexpectedly during upgrade: {key}")
@@ -312,6 +326,7 @@ def execute(
     install(python, baseline, root, upgrade=True)
     rollback_probe = check_installed(python, root, environment, baseline_version)
     rollback_queries = exercise_queries(python, repository, root)
+    rollback_go = go_query(False)
     rollback_state = database_state(repository)
     if rollback_state != before or repository_contract(repository) != contract:
         raise RuntimeError("rollback did not preserve repository state and manual memory")
@@ -328,6 +343,7 @@ def execute(
     install(python, candidate, root)
     reinstall_probe = check_installed(python, root, environment, candidate_version)
     reinstall_queries = exercise_queries(python, repository, root)
+    reinstall_go = go_query(True)
     if database_state(repository) != before or repository_contract(repository) != contract:
         raise RuntimeError("uninstall/reinstall changed persisted repository contracts")
 
@@ -380,6 +396,7 @@ def execute(
         "baseline_version": baseline_probe["metadata"],
         "baseline_sha256": actual_hash,
         "baseline_queries": baseline_queries,
+        "baseline_go": baseline_go,
         "candidate_artifact": candidate.name,
         "candidate_version": candidate_probe["metadata"],
         "candidate_module": candidate_probe["module"],
@@ -392,10 +409,11 @@ def execute(
             "index_bytes_during_install": "unchanged",
             "ignore_and_git_state": "preserved",
             "queries": candidate_queries,
+            "go": candidate_go,
             "mcp": mcp_modes["module"],
             "mcp_modes": mcp_modes,
         },
-        "rollback": {"version": rollback_probe["metadata"], "queries": rollback_queries},
+        "rollback": {"version": rollback_probe["metadata"], "queries": rollback_queries, "go": rollback_go},
         "uninstall": {
             "index": "preserved",
             "configuration": "preserved",
@@ -404,6 +422,7 @@ def execute(
         "reinstall": {
             "version": reinstall_probe["metadata"],
             "queries": reinstall_queries,
+            "go": reinstall_go,
         },
         "force_rebuild": {
             "configuration": "preserved",

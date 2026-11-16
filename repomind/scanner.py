@@ -103,6 +103,8 @@ SPECIAL_CONFIGS = {
     "requirements.txt",
     "Pipfile",
     "go.mod",
+    "go.work",
+    "go.work.sum",
     "go.sum",
     "Cargo.toml",
     "Cargo.lock",
@@ -349,14 +351,14 @@ class RepositoryScanner:
             for dirname in sorted(dirnames):
                 relative = f"{base}/{dirname}" if base else dirname
                 path = current_path / dirname
-                if path.is_symlink() or matcher.should_ignore(relative, is_dir=True):
+                if _is_symlink_or_junction(path) or matcher.should_ignore(relative, is_dir=True):
                     continue
                 kept_dirs.append(dirname)
             dirnames[:] = kept_dirs
 
             for filename in sorted(filenames):
                 path = current_path / filename
-                if path.is_symlink():
+                if _is_symlink_or_junction(path):
                     continue
                 relative = f"{base}/{filename}" if base else filename
                 relative = PurePosixPath(relative).as_posix()

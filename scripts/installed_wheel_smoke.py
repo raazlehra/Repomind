@@ -9,6 +9,11 @@ import venv
 from pathlib import Path
 from typing import Any
 
+if __package__:
+    from .go_smoke_fixture import assert_go_plan, create_go_fixture
+else:
+    from go_smoke_fixture import assert_go_plan, create_go_fixture
+
 
 def run(
     command: list[str],
@@ -87,6 +92,7 @@ readFileSync(join(CORPUS, 'fixture.jsonl'), 'utf8');
         encoding="utf-8",
     )
     run(["git", "init", "--quiet"], cwd=repository)
+    create_go_fixture(repository)
     run(["git", "config", "user.email", "release-smoke@example.invalid"], cwd=repository)
     run(["git", "config", "user.name", "RepoMind Release Smoke"], cwd=repository)
     run(
@@ -98,6 +104,7 @@ readFileSync(join(CORPUS, 'fixture.jsonl'), 'utf8');
             "package.json",
             "corpus/fixture.jsonl",
             "test/fixture.test.mjs",
+            "go.mod", "gopkg/math.go", "gopkg/math_test.go",
         ],
         cwd=repository,
     )
@@ -234,6 +241,10 @@ def execute_smoke(
             [str(executable), "test-impact", "src/app.py", "-C", str(repository), "--format", "json"],
             cwd=root,
         )
+        go_impact = json_command(
+            [str(executable), "test-impact", "gopkg/math.go", "-C", str(repository), "--format", "json"], cwd=root
+        )
+        assert_go_plan(go_impact)
         if cli_status.get("index_healthy") is not True or cli_impact.get("schema_version") != "repomind.test-impact.v1":
             raise RuntimeError(f"{name} did not preserve CLI/JSON compatibility")
         cli_results[name] = "ok"
@@ -280,6 +291,7 @@ def execute_smoke(
         "doctor_checks": len(doctor["checks"]),
         "context": "ok",
         "test_impact": "ok",
+        "go_package_analysis": "ok",
         "fixture_analysis": "tree-sitter" if treesitter else "safe lexical fallback",
         "recommended_commands_executed": False,
         "mcp": mcp_modes["module"],

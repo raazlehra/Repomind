@@ -1,0 +1,26 @@
+{
+  "scope": "Static local package selection; commands are data and coverage remains unknown",
+  "inputs": "Preserve the B13-RC2 frozen base/head/changed-path receipts; these expectations are additive b14 Go expectations, not edits of b13",
+  "GO-01": {
+    "repository": "go-chi/chi",
+    "pr": 1213,
+    "base": "167e1e3bd039d060696b99c8da4e876ae04f42c1",
+    "head": "0599655dced847a1095e9031c619c772f7a7ef63",
+    "changed_paths": ["middleware/wrap_writer.go", "middleware/wrap_writer_readfrom_test.go"],
+    "required_tests": ["middleware/wrap_writer_readfrom_test.go"],
+    "expected_go_commands": [{"argv": ["go", "test", "./middleware"], "working_directory": "."}],
+    "local_graph_supported": true,
+    "coverage": "unknown"
+  },
+  "GO-02": {
+    "repository": "go-chi/chi",
+    "pr": 1220,
+    "base": "60755706125129a9f9dfb99ac22f7ba016a1b60c",
+    "head": "ba85b65b46d5aa4208be08e2f674712e8c3a5666",
+    "changed_paths": ["middleware/supress_notfound.go", "middleware/supress_notfound_test.go"],
+    "required_tests": ["middleware/supress_notfound_test.go"],
+    "expected_go_commands": [{"argv": ["go", "test", "./middleware"], "working_directory": "."}],
+    "local_graph_supported": true,
+    "coverage": "unknown"
+  }
+}
