@@ -4,17 +4,35 @@ import argparse
 import ast
 import asyncio
 import json
+import os
 from pathlib import Path
+from typing import Literal
 
 from mcp import Client, StdioServerParameters
 
 
+def server_command(
+    server_python: Path, mode: Literal["module", "repomind", "atlas"]
+) -> tuple[str, list[str]]:
+    # Resolving a venv's python symlink can select the host interpreter on POSIX.
+    python = server_python.absolute()
+    if mode == "module":
+        return str(python), ["-m", "repomind", "mcp"]
+    name = "lehraz-atlas" if mode == "atlas" else "repomind"
+    executable = name + (".exe" if os.name == "nt" else "")
+    return str(python.with_name(executable)), ["mcp"]
+
+
 async def probe(
-    server_python: Path, repository: Path, *, exercise_all: bool = False
+    server_python: Path, repository: Path, *, exercise_all: bool = False,
+    mode: Literal["module", "repomind", "atlas"] = "module",
 ) -> dict[str, object]:
+    command, args = server_command(server_python, mode)
+    prefix = "atlas" if mode == "atlas" else "repomind"
+    server_name = "lehraz-atlas" if mode == "atlas" else "repomind"
     parameters = StdioServerParameters(
-        command=str(server_python),
-        args=["-m", "repomind", "mcp"],
+        command=command,
+        args=args,
         cwd=repository,
     )
     symbol, target = "__probe_missing__", "__probe_missing__.py"
@@ -40,16 +58,20 @@ async def probe(
         "repomind_stats": {},
         "repomind_memory": {"limit": 2},
     }
+    arguments = {name.replace("repomind_", f"{prefix}_", 1): extra for name, extra in arguments.items()}
     async with Client(parameters, mode="legacy") as client:
-        if client.server_info is None or client.server_info.name != "repomind":
+        if client.server_info is None or client.server_info.name != server_name:
             raise RuntimeError("MCP internal server identity changed")
         listed = await client.list_tools()
         tool_names = sorted(tool.name for tool in listed.tools)
-        missing = sorted(set(arguments).difference(tool_names))
-        if missing:
-            raise RuntimeError(f"installed MCP server is missing tools: {missing}")
+        if len(tool_names) != 12 or set(arguments) != set(tool_names):
+            raise RuntimeError(f"MCP server has a missing or duplicate namespace: {tool_names}")
+        schemas = {
+            tool.name.removeprefix(f"{prefix}_"): tool.model_dump(by_alias=True)["inputSchema"]
+            for tool in listed.tools
+        }
         payloads = {}
-        calls = arguments if exercise_all else {"repomind_status": {}}
+        calls = arguments if exercise_all else {f"{prefix}_status": {}}
         for name, extra in calls.items():
             result = await client.call_tool(name, {"repository": str(repository), **extra})
             if result.is_error or not isinstance(result.structured_content, dict):
@@ -57,17 +79,36 @@ async def probe(
             if "error" in result.structured_content:
                 raise RuntimeError(f"{name} returned a structured error")
             payloads[name] = result.structured_content
+        validation_checks = []
+        if exercise_all:
+            for invalid in ({"max_commands": True}, {"max_commands": "2"}, {"execute": True}):
+                result = await client.call_tool(
+                    f"{prefix}_test_impact", {"repository": str(repository), **invalid}
+                )
+                if not result.is_error or result.structured_content is not None:
+                    raise RuntimeError(f"MCP strict validation accepted {invalid}")
+                validation_checks.append(next(iter(invalid)))
+            result = await client.call_tool(
+                f"{prefix}_test_impact", {"repository": str(repository), "max_commands": 101}
+            )
+            if result.is_error or not isinstance(result.structured_content, dict) or result.structured_content.get("error") != "invalid_arguments":
+                raise RuntimeError("MCP bounded-argument error behavior changed")
+            validation_checks.append("hard_cap")
 
-    if payloads["repomind_status"].get("index_health") != "ok":
-        raise RuntimeError("repomind_status did not report a healthy index")
-    if exercise_all and payloads["repomind_test_impact"].get("schema_version") != "repomind.test-impact.v1":
+    if payloads[f"{prefix}_status"].get("index_health") != "ok":
+        raise RuntimeError("MCP status did not report a healthy index")
+    if exercise_all and payloads[f"{prefix}_test_impact"].get("schema_version") != "repomind.test-impact.v1":
         raise RuntimeError("MCP test-impact schema identity changed")
     return {
         "startup": "ok",
         "tool_count": len(tool_names),
         "tools": tool_names,
-        "legacy_tool_calls": sorted(payloads),
-        "server_identity": "repomind",
+        "legacy_tool_calls": sorted(payloads) if prefix == "repomind" else [],
+        "tool_calls": sorted(payloads),
+        "server_identity": server_name,
+        "mode": mode,
+        "input_schemas": schemas,
+        "strict_validation_checks": validation_checks,
         "status": "ok",
     }
 
@@ -76,11 +117,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Probe an installed Lehraz Atlas Free MCP server")
     parser.add_argument("--server-python", type=Path, required=True)
     parser.add_argument("--repository", type=Path, required=True)
+    parser.add_argument("--mode", choices=("module", "repomind", "atlas"), default="module")
     parser.add_argument("--exercise-all", action="store_true", help="call all tools, including refresh, on an owned synthetic release fixture")
     args = parser.parse_args()
     print(
         json.dumps(
-            asyncio.run(probe(args.server_python.resolve(), args.repository.resolve(), exercise_all=args.exercise_all)),
+            asyncio.run(probe(args.server_python.absolute(), args.repository.resolve(), exercise_all=args.exercise_all, mode=args.mode)),
             sort_keys=True,
         )
     )

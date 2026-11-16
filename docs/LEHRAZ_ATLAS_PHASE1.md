@@ -1,8 +1,10 @@
 # Lehraz Atlas Free — Phase 1 compatibility candidate
 
 Lehraz Atlas Free is the existing Apache-2.0 RepoMind product under the Lehraz brand.
-This branch prepares **2.0.0b14, unpublished**. It adds display branding and an
-equivalent `lehraz-atlas` command. It does not add language support or Pro features,
+This branch is an **unpublished compatibility implementation**. Its inherited
+`2.0.0b14` metadata remains unchanged during interface review; it is not an approved
+branding-only release. b14 retains the agreed Go language intelligence scope.
+This change adds display branding and a `lehraz-atlas` interface. It does not add language support or Pro features,
 rename the GitHub repository, change the separate `repomind-site`, or publish a package.
 
 ## Existing users
@@ -14,13 +16,19 @@ branding. The following remain supported with no scheduled deprecation:
 | --- | --- |
 | Distribution and import namespace | `repomind` |
 | Existing executable / module invocation | `repomind`, `python -m repomind` |
-| Candidate alias | `lehraz-atlas`, pointing to the same `repomind.cli:main` |
-| MCP server name and all 12 tool IDs | `repomind`, existing `repomind_*` IDs |
+| Candidate interface | `lehraz-atlas` via `repomind.cli:atlas_main`; legacy entry stays `repomind.cli:main` |
+| Legacy MCP launches | `repomind mcp`, `python -m repomind mcp`: server `repomind`, exactly 12 `repomind_*` IDs |
+| Opt-in Atlas MCP launch | `lehraz-atlas mcp`: server `lehraz-atlas`, exactly 12 `atlas_*` IDs |
 | Index / config / ignore | `.repomind/index.sqlite3`, `.repomind.toml`, `[repomind]`, `.repomindignore` |
 | JSON contracts | `repomind.test-impact.v1`, `repomind_version`, `repomind_error`, existing fields |
 | Codex integration | `.codex/skills/repomind/SKILL.md`, existing `REPOMIND-*` markers |
 
-Help continues to use the legacy `repomind` program name under either executable.
+Help uses the selected executable name; `lehraz-atlas --help` describes Lehraz Atlas Free.
+Both MCP modes share the same handlers and analysis services, input/output schemas,
+strict argument validation, structured errors and local storage. Neither default
+server exposes the other namespace. Switching a client to Atlas requires an
+explicit user-selected command and updates to any tool allowlist or prompt names.
+Existing registrations continue to use legacy names; no automatic migration occurs.
 Version, human-facing report titles and MCP display title use Lehraz Atlas Free.
 No client configuration is automatically edited. Existing marked AGENTS sections
 remain unchanged; skill updates preserve user content outside the managed markers.
@@ -60,8 +68,12 @@ memory, config, ignore rules and Git state across upgrade, explicit rollback to 
 uninstall and candidate reinstall. No `init --force` is used on that upgrade index.
 A separate synthetic fixture retains the existing force-rebuild behavior check.
 The installed-wheel gate rejects source import leakage, exercises both executables,
-initializes MCP over stdio, discovers and calls all 12 legacy tool IDs, and verifies
-the old test-impact schema. Recommendations remain data; upstream tests are not run.
+initializes all three MCP launch modes over stdio, and discovers and calls all 12
+tools per mode. It checks exact server/tool identities, matching input schemas,
+strict rejection of booleans, strings and execution arguments, bounded-error
+behavior and the old test-impact schema. Unit tests freeze input and output schemas
+captured from the qualified `55468b5` installed wheel. Recommendations remain data;
+upstream tests are not run.
 
 For other baseline/candidate versions, the lower-level lifecycle script requires
 explicit `--baseline-version`, `--candidate-version` and authenticated
@@ -74,8 +86,24 @@ wheel without claiming that it shipped the new alias.
 Implementation review, release approval and repository-rename approval are separate.
 All applicable local gates, exact-commit Linux/Windows CI, Python 3.11–3.13 coverage,
 pinned real-PR regressions and artifact hashes must be recorded before release.
-The candidate version does not reserve or broaden the proposed b14 language roadmap.
-Its final release scope/version must be reviewed before any publication.
+The release recommendation is to integrate this compatibility work into the
+planned b14 alongside Go language intelligence. Do not publish this branding-only
+branch as b14 or move the agreed b14–b17 language roadmap to make room for it.
+The current `2.0.0b14` strings identify disposable development artifacts only.
+Publication is NO_GO until the owner explicitly approves version/scope and the
+combined b14 language and compatibility gates pass.
+
+If a separate preview is necessary before Go is ready, request explicit approval
+for a distinct, monotonically increasing development version such as
+`2.0.0b14.dev1`, distributed through an explicitly identified GitHub preview rather
+than a new public package index identity. It orders after b13 and before b14 under
+the [Python version specification](https://packaging.python.org/en/latest/specifications/version-specifiers/#developmental-releases).
+This is a proposal only: no version, tag, published artifact or roadmap is changed
+here. Once approved, update version strings and CI artifact paths together, rebuild
+fresh artifacts, rerun all release gates and issue new checksums. Never relabel the
+current unpublished wheel or reuse b13 assets. Development releases of prereleases
+are discouraged for general public indexes; the preferred path remains the agreed
+b14 with Go scope.
 
 Never replace b13 tags, release notes, assets or checksums. Never change package
 identity in this phase. A future repository rename must preserve the existing

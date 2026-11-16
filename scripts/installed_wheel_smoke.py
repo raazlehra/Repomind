@@ -222,7 +222,11 @@ def execute_smoke(
         version = run([str(executable), "--version"], cwd=root).stdout.strip()
         if expected_version not in version or "Lehraz Atlas Free" not in version:
             raise RuntimeError(f"{name} has incorrect display/version output")
-        run([str(executable), "--help"], cwd=root)
+        help_text = run([str(executable), "--help"], cwd=root).stdout
+        if f"usage: {name} " not in help_text:
+            raise RuntimeError(f"{name} help uses the wrong executable name")
+        if name == "lehraz-atlas" and "Lehraz Atlas" not in help_text:
+            raise RuntimeError("Atlas help is missing product branding")
         cli_status = json_command(
             [str(executable), "status", "-C", str(repository), "--format", "json"], cwd=root
         )
@@ -250,20 +254,17 @@ def execute_smoke(
         raise RuntimeError("base wheel fallback invented a fixture-reference edge")
 
     probe_script = Path(__file__).with_name("mcp_stdio_probe.py").resolve()
-    mcp = json_command(
-        [
-            str(python),
-            str(probe_script),
-            "--exercise-all",
-            "--server-python",
-            str(python),
-            "--repository",
-            str(repository),
-        ],
-        cwd=root,
-    )
-    if len(mcp.get("legacy_tool_calls", [])) != 12:
-        raise RuntimeError("installed MCP smoke did not exercise all 12 legacy tools")
+    mcp_modes = {}
+    for mode in ("module", "repomind", "atlas"):
+        result = json_command(
+            [str(python), str(probe_script), "--exercise-all", "--mode", mode,
+             "--server-python", str(python), "--repository", str(repository)], cwd=root,
+        )
+        if len(result.get("tool_calls", [])) != 12:
+            raise RuntimeError(f"{mode} MCP smoke did not exercise all 12 tools")
+        mcp_modes[mode] = result
+    if any(result["input_schemas"] != mcp_modes["module"]["input_schemas"] for result in mcp_modes.values()):
+        raise RuntimeError("MCP input schemas differ across interfaces")
     return {
         "wheel": wheel.name,
         "version": expected_version,
@@ -281,7 +282,8 @@ def execute_smoke(
         "test_impact": "ok",
         "fixture_analysis": "tree-sitter" if treesitter else "safe lexical fallback",
         "recommended_commands_executed": False,
-        "mcp": mcp,
+        "mcp": mcp_modes["module"],
+        "mcp_modes": mcp_modes,
     }
 
 

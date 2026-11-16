@@ -46,7 +46,7 @@ dev = [
 
 [project.scripts]
 repomind = "repomind.cli:main"
-lehraz-atlas = "repomind.cli:main"
+lehraz-atlas = "repomind.cli:atlas_main"
 
 [tool.setuptools.packages.find]
 include = ["repomind*"]

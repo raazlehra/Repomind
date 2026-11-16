@@ -294,12 +294,17 @@ def execute(
         if status.get("index_healthy") is not True:
             raise RuntimeError(f"legacy index could not be read through {name}")
     probe_script = Path(__file__).with_name("mcp_stdio_probe.py")
-    mcp = json_command(
-        [str(python), str(probe_script), "--exercise-all", "--server-python", str(python), "--repository", str(repository)],
-        cwd=root,
-    )
-    if len(mcp.get("legacy_tool_calls", [])) != 12:
-        raise RuntimeError("upgrade MCP smoke did not exercise all 12 legacy tools")
+    mcp_modes = {}
+    for mode in ("module", "repomind", "atlas"):
+        result = json_command(
+            [str(python), str(probe_script), "--exercise-all", "--mode", mode,
+             "--server-python", str(python), "--repository", str(repository)], cwd=root,
+        )
+        if len(result.get("tool_calls", [])) != 12:
+            raise RuntimeError(f"upgrade {mode} MCP smoke did not exercise all 12 tools")
+        mcp_modes[mode] = result
+    if any(result["input_schemas"] != mcp_modes["module"]["input_schemas"] for result in mcp_modes.values()):
+        raise RuntimeError("upgrade changed MCP schemas across interfaces")
     if repository_contract(repository) != contract:
         raise RuntimeError("upgrade changed config, ignore files or Git state")
 
@@ -387,7 +392,8 @@ def execute(
             "index_bytes_during_install": "unchanged",
             "ignore_and_git_state": "preserved",
             "queries": candidate_queries,
-            "mcp": mcp,
+            "mcp": mcp_modes["module"],
+            "mcp_modes": mcp_modes,
         },
         "rollback": {"version": rollback_probe["metadata"], "queries": rollback_queries},
         "uninstall": {

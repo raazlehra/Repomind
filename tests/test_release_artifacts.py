@@ -10,7 +10,7 @@ import pytest
 from scripts.verify_release_artifacts import validate_member_names, verify_sdist, verify_wheel
 
 
-def make_wheel(tmp_path: Path, *, alias: bool = True, project: str = "repomind", runtime: str = "2.0.0b14") -> Path:
+def make_wheel(tmp_path: Path, *, alias: bool = True, project: str = "repomind", runtime: str = "2.0.0b14", atlas_target: str = "atlas_main") -> Path:
     wheel = tmp_path / "repomind-2.0.0b14-py3-none-any.whl"
     info = "repomind-2.0.0b14.dist-info"
     with zipfile.ZipFile(wheel, "w") as archive:
@@ -20,7 +20,7 @@ def make_wheel(tmp_path: Path, *, alias: bool = True, project: str = "repomind",
         archive.writestr(f"{info}/METADATA", f"Name: {project}\nVersion: 2.0.0b14\n")
         entries = "[console_scripts]\nrepomind = repomind.cli:main\n"
         if alias:
-            entries += "lehraz-atlas = repomind.cli:main\n"
+            entries += f"lehraz-atlas = repomind.cli:{atlas_target}\n"
         archive.writestr(f"{info}/entry_points.txt", entries)
         archive.writestr(f"{info}/licenses/LICENSE", "test attribution")
     return wheel
@@ -34,6 +34,11 @@ def test_candidate_verifier_requires_both_real_entrypoints(tmp_path: Path) -> No
         verify_wheel(wheel, "2.0.0b14")
     # The opt-in historical mode does not require an alias that b13 never shipped.
     assert verify_wheel(wheel, "2.0.0b14", ("repomind",))["name"] == "repomind"
+
+
+def test_verifier_rejects_atlas_alias_to_legacy_mode(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="lehraz-atlas"):
+        verify_wheel(make_wheel(tmp_path, atlas_target="main"), "2.0.0b14")
 
 
 @pytest.mark.parametrize("project,runtime", [("lehraz-atlas", "2.0.0b14"), ("repomind", "2.0.0b13")])

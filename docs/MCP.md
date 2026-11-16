@@ -8,6 +8,28 @@ Lehraz Atlas Free uses the standard local MCP stdio transport. This is the simpl
 
 ## Server command
 
+The unpublished Lehraz Atlas candidate supports two interfaces over the same
+analysis and storage implementation:
+
+| Launch | Server identity | Tool namespace |
+| --- | --- | --- |
+| `lehraz-atlas mcp` | `lehraz-atlas` | Exactly 12 `atlas_*` tools |
+| `repomind mcp` | `repomind` | Exactly 12 legacy `repomind_*` tools |
+| `python -m repomind mcp` | `repomind` | Exactly 12 legacy `repomind_*` tools |
+
+Each server exposes only its selected namespace. The shared suffixes are `status`,
+`context`, `symbol`, `callers`, `dependencies`, `impact`, `test_impact`, `snippets`,
+`refresh`, `map`, `stats` and `memory`. Arguments, input/output schemas, strict
+validation, error payloads and `.repomind` data remain compatible. The published
+b13 wheel supports only the legacy interface.
+
+Existing registrations are never automatically edited. To opt into Atlas after
+installing the candidate, select the absolute `lehraz-atlas` executable from that
+environment and pass `mcp`; on Windows this is
+`& "C:\path\to\repomind-venv\Scripts\lehraz-atlas.exe" mcp`. Review client tool
+allowlists and prompts for the new `atlas_*` IDs. The examples below retain the
+legacy registration so current users keep their existing tool contracts.
+
 Install a release wheel as described in [Installation and lifecycle](INSTALLATION.md). Configure
 clients with the absolute Python interpreter from that environment:
 

@@ -5,15 +5,21 @@ Local-first repository intelligence for developers.
 Index once. Understand everywhere.
 
 Lehraz Atlas Free is the Apache-2.0 open-source product formerly called **RepoMind**,
-under the Lehraz parent brand. This branch prepares an **unpublished `2.0.0b14`
-compatibility candidate**. The latest public wheel remains RepoMind b13 and retains
+under the Lehraz parent brand. This branch is an **unpublished compatibility
+implementation**; its inherited `2.0.0b14` development metadata is not release
+approval. b14 retains its agreed Go language intelligence scope. The latest public
+wheel remains RepoMind b13 and retains
 its original filename, checksum and output. No repository rename or PyPI publication
 has occurred.
 
 Existing users keep `repomind`, `python -m repomind`, all 12 `repomind_*` MCP tools,
 `.repomind` indexes/configuration and existing JSON schemas. The candidate also adds
-`lehraz-atlas` as an equivalent executable; b13 does not include it. Help retains the
-legacy `repomind` program name. No legacy-interface deprecation is scheduled.
+`lehraz-atlas` with Lehraz Atlas help and an opt-in `lehraz-atlas mcp` server
+exposing exactly 12 `atlas_*` tools. `repomind mcp` and `python -m repomind mcp`
+retain the `repomind` server and exactly 12 legacy `repomind_*` tools. Each server
+uses one namespace and shares the same analysis implementation. Existing MCP
+registrations are not automatically edited. b13 does not include the new command.
+No legacy-interface deprecation is scheduled.
 See the [compatibility and candidate plan](docs/LEHRAZ_ATLAS_PHASE1.md).
 Lehraz Atlas Pro is future work, separate from the existing Free functionality.
 

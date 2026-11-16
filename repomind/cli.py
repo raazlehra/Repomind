@@ -50,11 +50,13 @@ from repomind.watcher import watch_repository, watchdog_available
 _FORMATS = ("text", "markdown", "json")
 
 
-def build_parser() -> argparse.ArgumentParser:
+def build_parser(*, atlas: bool = False) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="repomind",
-        description="Local-first persistent code context engine for AI coding agents.",
+        prog="lehraz-atlas" if atlas else "repomind",
+        description=("Lehraz Atlas Free: " if atlas else "")
+        + "Local-first persistent code context engine for AI coding agents.",
     )
+    parser.set_defaults(_atlas=atlas)
     parser.add_argument("--version", action="version", version=f"Lehraz Atlas Free {__version__} (formerly RepoMind)")
     parser.add_argument(
         "--verbose", action="store_true", help="show tracebacks for unexpected errors"
@@ -225,7 +227,17 @@ def _repository_argument(parser: argparse.ArgumentParser) -> None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = build_parser()
+    """Legacy CLI and python -m repomind entry point."""
+    return _main(argv, atlas=False)
+
+
+def atlas_main(argv: Sequence[str] | None = None) -> int:
+    """Lehraz Atlas CLI; shares analysis and dispatch with the legacy entry point."""
+    return _main(argv, atlas=True)
+
+
+def _main(argv: Sequence[str] | None, *, atlas: bool) -> int:
+    parser = build_parser(atlas=atlas)
     args = parser.parse_args(argv)
     try:
         return _dispatch(args)
@@ -469,7 +481,7 @@ def _dispatch(args: argparse.Namespace) -> int:
     if command == "mcp":
         from repomind.mcp import run_stdio
 
-        run_stdio(debug=bool(args.debug))
+        run_stdio(debug=bool(args.debug), atlas=bool(getattr(args, "_atlas", False)))
         return 0
     raise RepoMindError(f"Unknown command: {command}")
 

@@ -86,8 +86,9 @@ def verify_wheel(
         raise ValueError("wheel runtime version differs from distribution metadata")
     parsed = configparser.ConfigParser()
     parsed.read_string(entrypoints)
+    targets = {"repomind": "repomind.cli:main", "lehraz-atlas": "repomind.cli:atlas_main"}
     for command in required_clis:
-        if parsed.get("console_scripts", command, fallback=None) != "repomind.cli:main":
+        if parsed.get("console_scripts", command, fallback=None) != targets[command]:
             raise ValueError(f"wheel is missing the {command} compatibility entrypoint")
     return {
         "filename": wheel.name,

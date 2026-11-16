@@ -19,7 +19,8 @@ def test_distribution_alias_and_legacy_contracts_are_separate() -> None:
     root = Path(__file__).resolve().parents[1]
     metadata = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     assert metadata["name"] == "repomind"
-    assert metadata["scripts"]["repomind"] == metadata["scripts"]["lehraz-atlas"] == "repomind.cli:main"
+    assert metadata["scripts"]["repomind"] == "repomind.cli:main"
+    assert metadata["scripts"]["lehraz-atlas"] == "repomind.cli:atlas_main"
     assert (INDEX_DIRECTORY, INDEX_FILENAME, SCHEMA_VERSION) == (".repomind", "index.sqlite3", 2)
     assert error_payload(RepoMindError("example"))["error"] == "repomind_error"
 
