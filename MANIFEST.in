@@ -1,3 +1,4 @@
 recursive-include scripts *.py
 recursive-include tests/fixtures *.py *.pyi *.js *.jsx *.mjs *.cjs *.ts *.tsx *.json *.jsonl *.yaml *.yml *.toml *.txt *.md .gitignore
+recursive-include tests/fixtures *.go go.mod go.work go.sum go.work.sum
 global-exclude *.pyc *.pyo

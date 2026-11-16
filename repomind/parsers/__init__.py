@@ -5,6 +5,7 @@ from pathlib import Path
 from repomind.models import ParseResult
 from repomind.parsers.base import StructuralParser
 from repomind.parsers.fallback import FallbackParser, PlainTextParser
+from repomind.parsers.go import GoManifestParser, GoParser
 from repomind.parsers.javascript import JavaScriptParser
 from repomind.parsers.python import PythonParser
 from repomind.parsers.treesitter import TreeSitterJavaScriptParser
@@ -16,6 +17,7 @@ class ParserRegistry:
             PythonParser(),
             JavaScriptParser(),
             FallbackParser(),
+            GoParser(),
             PlainTextParser(),
         ]
         self._by_language: dict[str, StructuralParser] = {}
@@ -32,6 +34,7 @@ class ParserRegistry:
             self._by_language[language] = parser
             self.backend_by_language[language] = type(parser).__name__
         self._plain = PlainTextParser()
+        self._go_manifest = GoManifestParser()
 
     @property
     def supported_languages(self) -> tuple[str, ...]:
@@ -52,7 +55,7 @@ class ParserRegistry:
             source = path.read_text(encoding="utf-8", errors="replace")
         except OSError as exc:
             return ParseResult(parse_error=f"Unable to read: {exc}")
-        parser = self._by_language.get(language, self._plain)
+        parser = self._go_manifest if path.name in {"go.mod", "go.work"} else self._by_language.get(language, self._plain)
         try:
             return parser.parse(path, relative_path, source)
         except (RecursionError, MemoryError) as exc:

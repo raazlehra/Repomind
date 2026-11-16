@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import tarfile
 import tempfile
 import tomllib
 import venv
@@ -46,7 +47,34 @@ def execute(source: Path, sdist: Path, root: Path) -> dict[str, object]:
         raise RuntimeError("sdist did not produce exactly one project wheel")
     smoke_root = root / "Sdist Wheel Smoke"
     smoke_root.mkdir()
-    return {"editable": probe, "sdist_wheel": execute_smoke(built[0], smoke_root)}
+    wheel_result = execute_smoke(built[0], smoke_root)
+    # Exercise actual packaged Go manifests/source through the sdist-built wheel.
+    fixture = root / "Packaged Go Workspace With Spaces"
+    fixture.mkdir()
+    members = ("go.work", "app/go.mod", "app/pkg/app.go", "app/pkg/app_test.go",
+               "lib/go.mod", "lib/pkg/value.go", "lib/pkg/value_test.go")
+    with tarfile.open(sdist, "r:gz") as archive:
+        for relative in members:
+            name = f"repomind-{expected}/tests/fixtures/go_workspace/{relative}"
+            member = archive.getmember(name)
+            if not member.isfile() or member.size > 10_000:
+                raise RuntimeError("unsafe or oversized packaged Go fixture")
+            content = archive.extractfile(member)
+            if content is None:
+                raise RuntimeError("packaged Go fixture is not readable")
+            target = fixture / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content.read())
+    wheel_python = environment_python(smoke_root / "Installed Wheel Environment With Spaces")
+    run([str(wheel_python), "-m", "repomind", "init", str(fixture), "--format", "json"], cwd=root)
+    plan = json.loads(run([str(wheel_python), "-m", "repomind", "test-impact", "lib/pkg/value.go", "-C", str(fixture), "--format", "json"], cwd=root).stdout)
+    commands = {(c["working_directory"], tuple(c["argv"])) for c in plan["recommended_commands"]}
+    if commands != {("app", ("go", "test", "./pkg")), ("lib", ("go", "test", "./pkg"))}:
+        raise RuntimeError("packaged workspace did not preserve local Go package relationships")
+    if any(test["coverage"] != "unknown" for test in plan["existing_tests"]):
+        raise RuntimeError("packaged Go fixture invented runtime coverage")
+    return {"editable": probe, "sdist_wheel": wheel_result,
+            "packaged_go_workspace": {"status": "ok", "fixture_files": len(members), "commands_executed": False}}
 
 
 def main() -> int:

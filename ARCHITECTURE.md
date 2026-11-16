@@ -55,8 +55,12 @@ parse(path, relative_path, source) -> ParseResult
 
 - Python uses the standard AST for high-confidence declarations, signatures, imports, decorators/routes, inheritance, and lexical calls.
 - JS/TS/JSX/TSX uses a deterministic lexical extractor for imports, exported declarations, interfaces/types, classes, arrow functions/components, routes, and conservative calls. When the `treesitter` extra is installed, an optional adapter uses Tree-sitter for declaration names and spans while retaining deterministic relationship evidence.
-- Java/Go/Rust/C#/C/C++ use a shallow fallback extractor.
-- Configuration and documentation retain only file metadata and a summary.
+- Go uses a bounded header/manifest extractor and local package resolver; declarations
+  and imports remain compact stored evidence. Unqualified syntax, build constraints
+  and unresolved ownership remain explicit. See [Go limits](docs/B14_GO_INTELLIGENCE.md).
+- Java/Rust/C#/C/C++ use a shallow fallback extractor.
+- Configuration and documentation retain only file metadata and a summary, except
+  bounded `go.mod`/`go.work` relationship extraction in Stage A.
 
 The interface permits a future Tree-sitter adapter to replace a language parser without changing indexing or retrieval.
 

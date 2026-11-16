@@ -18,6 +18,8 @@ from typing import Any, Literal
 
 from repomind.database import IndexDatabase
 from repomind.git import _run_git, passive_git_command, passive_git_environment
+from repomind.go_analysis import load_go_analysis
+from repomind.parsers.go import is_go_path
 from repomind.scanner import classify_file, is_executable_test_path
 
 TEST_IMPACT_SCHEMA_VERSION = "repomind.test-impact.v1"
@@ -345,6 +347,12 @@ def analyze_test_impact(
         database.root, changed_files, base, limits, budget
     )
     changed = [_changed_file_record(database, path) for path in selected]
+    go_selected = [item for item in changed if is_go_path(str(item["path"]))]
+    go_analysis: dict[str, Any] = load_go_analysis(database) if go_selected else {"files": {}, "truncated": False}
+    go_supported = {
+        path for path, info in go_analysis["files"].items()
+        if info.get("supported") and not go_analysis.get("truncated")
+    }
     graph_stats = _GraphBudget()
     tests, test_stats = _relevant_tests(
         database, changed, limits, graph_stats, budget
@@ -352,7 +360,7 @@ def analyze_test_impact(
     impacted_areas, area_stats, graph_stats = _impacted_areas(
         database, changed, limits, graph_stats, budget
     )
-    uncovered = _uncovered_areas(changed, tests)
+    uncovered = _uncovered_areas(changed, tests, go_supported=go_supported)
     command_stats: dict[str, Any] = {}
     commands, command_warnings = detect_test_commands(
         database,
@@ -372,7 +380,7 @@ def analyze_test_impact(
         warnings.append("No supported source files were found in the index.")
     if not selected:
         warnings.append("No changed files were selected; no change-specific impact was inferred.")
-    evidence = [
+    evidence: list[dict[str, Any]] = [
         {
             "kind": "analysis-boundary",
             "detail": (
@@ -394,13 +402,21 @@ def analyze_test_impact(
         for item in changed
         if item.get("purpose") not in {"documentation", "configuration"}
     ]
+    capability_items = [*non_doc_changed, *(item for item in go_selected if item not in non_doc_changed)]
     is_pure_go = bool(
-        non_doc_changed
-        and all(item.get("language") == "go" for item in non_doc_changed)
+        capability_items
+        and all(is_go_path(str(item["path"])) for item in capability_items)
     )
-    has_go = any(item.get("language") == "go" for item in non_doc_changed)
+    has_go = bool(go_selected)
+    unsupported_go = any(str(item["path"]) not in go_supported for item in go_selected)
+    go_runner_supported = not unsupported_go and all(
+        go_analysis["files"].get(str(item["path"]), {}).get("runner_supported", True) for item in go_selected
+    )
 
-    if is_pure_go:
+    if unsupported_go and any(str(item["path"]) in go_supported for item in go_selected):
+        warnings.append("Go analysis is partially supported: only proven local packages produce recommendations; other changed Go files remain unsupported/unknown.")
+        evidence.append({"kind": "partial-language-capability", "language": "go", "detail": "Per-file local evidence is retained; aggregate flags are conservative and no commands execute."})
+    elif is_pure_go and unsupported_go:
         warnings.append(
             "Go test impact analysis is unsupported: dependency graph extraction, test selection, and test runner execution are not available for Go."
         )
@@ -415,7 +431,7 @@ def analyze_test_impact(
                 ),
             }
         )
-    elif has_go:
+    elif has_go and unsupported_go:
         warnings.append(
             "Mixed language changes detected: non-Go test selection and runner execution are active, but Go language dependency graph extraction, test selection, and test runner execution remain unsupported."
         )
@@ -431,20 +447,20 @@ def analyze_test_impact(
         )
 
     by_language: dict[str, dict[str, bool]] = {}
-    for item in non_doc_changed:
-        lang = str(item.get("language") or "unknown")
+    for item in capability_items:
+        lang = "go" if is_go_path(str(item["path"])) else str(item.get("language") or "unknown")
         if lang not in by_language:
             by_language[lang] = {
-                "dependency_graph_supported": lang != "go",
-                "test_selection_supported": lang != "go",
-                "runner_supported": lang != "go",
+                "dependency_graph_supported": lang != "go" or not unsupported_go,
+                "test_selection_supported": lang != "go" or not unsupported_go,
+                "runner_supported": lang != "go" or go_runner_supported,
             }
 
-    all_supported = bool(non_doc_changed and not has_go)
+    all_supported = bool(capability_items and not unsupported_go)
     capabilities: dict[str, Any] = {
         "dependency_graph_supported": all_supported,
         "test_selection_supported": all_supported,
-        "runner_supported": all_supported,
+        "runner_supported": all_supported and (not has_go or go_runner_supported),
         "by_language": by_language,
     }
 
@@ -455,8 +471,19 @@ def analyze_test_impact(
         or command_stats.get("truncated")
         or selection_stats["truncated"]
         or budget.reasons
+        or (has_go and go_analysis.get("truncated"))
     )
-    report_confidence = "low" if is_pure_go else _overall_confidence(changed, tests)
+    if has_go:
+        evidence.append({"kind": "go-local-package-analysis", "detail": go_analysis.get("scope", "Local Go evidence is unavailable"),
+                         "limitations": go_analysis.get("notes", []), "commands_executed": False})
+        for item in go_selected:
+            path = str(item["path"])
+            if path not in go_supported:
+                detail = go_analysis["files"].get(path, {}).get("reason") or "Missing or bounded Go index evidence"
+                warnings.append(f"Go unsupported/unknown for {path}: {detail}.")
+            elif not go_analysis["files"].get(path, {}).get("runner_supported", True):
+                warnings.append(f"Go command recommendation unavailable for {path}: {go_analysis['files'][path].get('runner_reason')}.")
+    report_confidence = "low" if is_pure_go and unsupported_go else _overall_confidence(changed, tests)
     report: dict[str, Any] = {
         "schema_version": TEST_IMPACT_SCHEMA_VERSION,
         "repository": ".",
@@ -510,6 +537,10 @@ def analyze_test_impact(
         },
         "warnings": list(dict.fromkeys(warnings)),
     }
+    if has_go:
+        report["truncation"]["go_index"] = {
+            "truncated": bool(go_analysis.get("truncated")), "limits": go_analysis.get("limits", {}),
+        }
     if additional_metadata:
         report.update(additional_metadata)
     _fit_report_to_output_budget(report, limits.max_output_bytes, output_mode)
@@ -680,6 +711,25 @@ def detect_test_commands(
             ),
             budget,
         ):
+            break
+
+    go_analysis = load_go_analysis(database)
+    go_groups: dict[tuple[str, str], list[str]] = {}
+    if not go_analysis.get("truncated"):
+        for path in sorted(targeted_paths):
+            if not path.endswith("_test.go"):
+                continue
+            if not budget.consume("go_command_candidates", "max_test_candidates_scanned"):
+                break
+            info = go_analysis["files"].get(path, {})
+            if info.get("supported") and info.get("runner_supported", True):
+                go_groups.setdefault((str(info["module"]), str(info["target"])), []).append(path)
+    for (owner, target), selected in sorted(go_groups.items()):
+        if not _append_command_candidate(commands, _command(
+            "go", "targeted", ["go", "test", target], owner, selected,
+            "Run the statically related local Go package, including its package tests. "
+            "Build constraints and runtime coverage remain unknown; recommendation only.",
+        ), budget):
             break
 
     for item in _gradle_commands(paths, test_paths, targeted_paths):
@@ -1748,10 +1798,16 @@ def _bounded_dependents(
     cursor = 0
     seen_ids = set(direct_ids)
     indirect_edges = 0
+    go_traversal = is_go_path(target_path)
     while cursor < len(queue):
         file_id, depth = queue[cursor]
         cursor += 1
-        if depth >= 1 or graph.nodes_visited >= limits.max_graph_nodes:
+        if go_traversal and graph.nodes_visited >= limits.max_graph_nodes:
+            graph.mark("max_graph_nodes")
+            break
+        # Go imports represent whole packages, so follow transitive package tests
+        # up to the existing request budgets. Preserve other languages' depth.
+        if (depth >= 1 and not go_traversal) or graph.nodes_visited >= limits.max_graph_nodes:
             continue
         if max_nodes is not None and target_nodes >= max_nodes:
             graph.fair_quota_reached = True
@@ -1850,6 +1906,7 @@ def _relevant_tests(
     budget: _AnalysisBudget,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     candidates: dict[str, dict[str, Any]] = {}
+    go_analysis = load_go_analysis(database)
     evidence_store = _EvidenceStore.start(limits, budget)
     test_rows = list(
         database.connection.execute(
@@ -1875,6 +1932,10 @@ def _relevant_tests(
             budget.mark("max_relevant_test_candidates")
             break
         changed_path = str(changed_item["path"])
+        if is_go_path(changed_path) and not changed_item["is_test"] and (
+            go_analysis.get("truncated") or not go_analysis["files"].get(changed_path, {}).get("supported")
+        ):
+            continue
         remaining_files = len(changed) - idx
         remaining_nodes = max(0, limits.max_graph_nodes - graph.nodes_visited)
         fair_node_quota = max(1, remaining_nodes // remaining_files) if remaining_files > 0 else remaining_nodes
@@ -2510,7 +2571,7 @@ def _merge_test(
 
 
 def _uncovered_areas(
-    changed: list[dict[str, Any]], tests: list[dict[str, Any]]
+    changed: list[dict[str, Any]], tests: list[dict[str, Any]], *, go_supported: set[str] | None = None
 ) -> list[dict[str, Any]]:
     meaningful = {
         path
@@ -2525,7 +2586,7 @@ def _uncovered_areas(
             continue
         if path in meaningful:
             continue
-        is_go = item.get("language") == "go"
+        is_go = item.get("language") == "go" and path not in (go_supported or set())
         gaps.append(
             {
                 "path": path,
