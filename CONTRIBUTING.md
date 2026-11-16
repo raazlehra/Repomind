@@ -1,4 +1,4 @@
-# Contributing to RepoMind
+# Contributing to Lehraz Atlas Free
 
 ## Principles
 
@@ -25,7 +25,9 @@ python -m pip install -e '.[dev]'
 
 ## Checks
 
-Run all gates from the repository root containing `pyproject.toml` before submitting:
+Run all gates from a fresh disposable checkout containing `pyproject.toml` before submitting.
+Some existing retrieval tests initialize repository-relative fixture indexes in place; never run
+them against a worktree whose fixture indexes or local memory must be preserved:
 
 ```bash
 python -m pytest

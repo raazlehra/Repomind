@@ -1,0 +1,506 @@
+{
+  "repomind_callers": {
+    "inputSchema": {
+      "properties": {
+        "repository": {
+          "title": "Repository",
+          "type": "string"
+        },
+        "symbol": {
+          "title": "Symbol",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "symbol"
+      ],
+      "title": "repomind_callersArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "additionalProperties": true,
+      "title": "repomind_callersDictOutput",
+      "type": "object"
+    }
+  },
+  "repomind_context": {
+    "inputSchema": {
+      "properties": {
+        "budget": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget"
+        },
+        "explain": {
+          "default": false,
+          "title": "Explain",
+          "type": "boolean"
+        },
+        "level": {
+          "default": 1,
+          "title": "Level",
+          "type": "integer"
+        },
+        "repository": {
+          "title": "Repository",
+          "type": "string"
+        },
+        "task": {
+          "title": "Task",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "task"
+      ],
+      "title": "repomind_contextArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "additionalProperties": true,
+      "title": "repomind_contextDictOutput",
+      "type": "object"
+    }
+  },
+  "repomind_dependencies": {
+    "inputSchema": {
+      "properties": {
+        "repository": {
+          "title": "Repository",
+          "type": "string"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "target"
+      ],
+      "title": "repomind_dependenciesArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "additionalProperties": true,
+      "title": "repomind_dependenciesDictOutput",
+      "type": "object"
+    }
+  },
+  "repomind_impact": {
+    "inputSchema": {
+      "properties": {
+        "repository": {
+          "title": "Repository",
+          "type": "string"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "target"
+      ],
+      "title": "repomind_impactArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "additionalProperties": true,
+      "title": "repomind_impactDictOutput",
+      "type": "object"
+    }
+  },
+  "repomind_map": {
+    "inputSchema": {
+      "properties": {
+        "depth": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Depth"
+        },
+        "include_symbols": {
+          "default": false,
+          "title": "Include Symbols",
+          "type": "boolean"
+        },
+        "repository": {
+          "title": "Repository",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository"
+      ],
+      "title": "repomind_mapArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "additionalProperties": true,
+      "title": "repomind_mapDictOutput",
+      "type": "object"
+    }
+  },
+  "repomind_memory": {
+    "inputSchema": {
+      "properties": {
+        "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        },
+        "limit": {
+          "default": 10,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "repository": {
+          "title": "Repository",
+          "type": "string"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        },
+        "task": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Task"
+        }
+      },
+      "required": [
+        "repository"
+      ],
+      "title": "repomind_memoryArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "additionalProperties": true,
+      "title": "repomind_memoryDictOutput",
+      "type": "object"
+    }
+  },
+  "repomind_refresh": {
+    "inputSchema": {
+      "properties": {
+        "repository": {
+          "title": "Repository",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository"
+      ],
+      "title": "repomind_refreshArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "additionalProperties": true,
+      "title": "repomind_refreshDictOutput",
+      "type": "object"
+    }
+  },
+  "repomind_snippets": {
+    "inputSchema": {
+      "properties": {
+        "line_bound": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Line Bound"
+        },
+        "repository": {
+          "title": "Repository",
+          "type": "string"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        },
+        "token_bound": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Token Bound"
+        }
+      },
+      "required": [
+        "repository",
+        "target"
+      ],
+      "title": "repomind_snippetsArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "additionalProperties": true,
+      "title": "repomind_snippetsDictOutput",
+      "type": "object"
+    }
+  },
+  "repomind_stats": {
+    "inputSchema": {
+      "properties": {
+        "repository": {
+          "title": "Repository",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository"
+      ],
+      "title": "repomind_statsArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "additionalProperties": true,
+      "title": "repomind_statsDictOutput",
+      "type": "object"
+    }
+  },
+  "repomind_status": {
+    "inputSchema": {
+      "properties": {
+        "repository": {
+          "title": "Repository",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository"
+      ],
+      "title": "repomind_statusArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "additionalProperties": true,
+      "title": "repomind_statusDictOutput",
+      "type": "object"
+    }
+  },
+  "repomind_symbol": {
+    "inputSchema": {
+      "properties": {
+        "repository": {
+          "title": "Repository",
+          "type": "string"
+        },
+        "symbol": {
+          "title": "Symbol",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "symbol"
+      ],
+      "title": "repomind_symbolArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "additionalProperties": true,
+      "title": "repomind_symbolDictOutput",
+      "type": "object"
+    }
+  },
+  "repomind_test_impact": {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Base"
+        },
+        "changed_files": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Changed Files"
+        },
+        "max_analysis_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "default": 10.0,
+          "title": "Max Analysis Seconds"
+        },
+        "max_changed_files": {
+          "default": 200,
+          "title": "Max Changed Files",
+          "type": "integer"
+        },
+        "max_command_candidates": {
+          "default": 100,
+          "title": "Max Command Candidates",
+          "type": "integer"
+        },
+        "max_commands": {
+          "default": 20,
+          "title": "Max Commands",
+          "type": "integer"
+        },
+        "max_direct_edges_per_file": {
+          "default": 500,
+          "title": "Max Direct Edges Per File",
+          "type": "integer"
+        },
+        "max_evidence_candidates": {
+          "default": 5000,
+          "title": "Max Evidence Candidates",
+          "type": "integer"
+        },
+        "max_evidence_per_result": {
+          "default": 10,
+          "title": "Max Evidence Per Result",
+          "type": "integer"
+        },
+        "max_graph_edges": {
+          "default": 2000,
+          "title": "Max Graph Edges",
+          "type": "integer"
+        },
+        "max_graph_nodes": {
+          "default": 500,
+          "title": "Max Graph Nodes",
+          "type": "integer"
+        },
+        "max_impacted_areas": {
+          "default": 100,
+          "title": "Max Impacted Areas",
+          "type": "integer"
+        },
+        "max_impacted_candidates": {
+          "default": 1000,
+          "title": "Max Impacted Candidates",
+          "type": "integer"
+        },
+        "max_indirect_edges_per_file": {
+          "default": 500,
+          "title": "Max Indirect Edges Per File",
+          "type": "integer"
+        },
+        "max_migration_candidates_scanned": {
+          "default": 1000,
+          "title": "Max Migration Candidates Scanned",
+          "type": "integer"
+        },
+        "max_output_bytes": {
+          "default": 200000,
+          "title": "Max Output Bytes",
+          "type": "integer"
+        },
+        "max_path_length": {
+          "default": 1000,
+          "title": "Max Path Length",
+          "type": "integer"
+        },
+        "max_relevant_test_candidates": {
+          "default": 500,
+          "title": "Max Relevant Test Candidates",
+          "type": "integer"
+        },
+        "max_route_candidates_scanned": {
+          "default": 5000,
+          "title": "Max Route Candidates Scanned",
+          "type": "integer"
+        },
+        "max_test_candidates_scanned": {
+          "default": 5000,
+          "title": "Max Test Candidates Scanned",
+          "type": "integer"
+        },
+        "max_tests": {
+          "default": 50,
+          "title": "Max Tests",
+          "type": "integer"
+        },
+        "repository": {
+          "title": "Repository",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository"
+      ],
+      "title": "repomind_test_impactArguments",
+      "type": "object"
+    },
+    "outputSchema": {
+      "additionalProperties": true,
+      "title": "repomind_test_impactDictOutput",
+      "type": "object"
+    }
+  }
+}

@@ -7,6 +7,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from repomind.branding import optional_installation_hint
 from repomind.config import Config
 from repomind.errors import RepoMindError
 from repomind.indexer import Indexer, IndexResult
@@ -26,7 +27,7 @@ def watch_repository(
 ) -> None:
     if not watchdog_available():
         raise RepoMindError(
-            "Event-driven watcher support is not installed. Run: pip install 'repomind[watch]'"
+            "Event-driven watcher support is not installed. " + optional_installation_hint("watch")
         )
     _watch_events(root, config, on_update, debounce)
 
@@ -42,7 +43,7 @@ def _watch_events(root: Path, config: Config, on_update: UpdateCallback, debounc
         from watchdog.observers import Observer
     except ImportError as exc:
         raise RepoMindError(
-            "watchdog could not be loaded; install: pip install 'repomind[watch]'"
+            "watchdog could not be loaded. " + optional_installation_hint("watch")
         ) from exc
     events: queue.Queue[str] = queue.Queue()
 

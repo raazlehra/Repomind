@@ -1,0 +1,3 @@
+recursive-include scripts *.py
+recursive-include tests/fixtures *.py *.pyi *.js *.jsx *.mjs *.cjs *.ts *.tsx *.json *.jsonl *.yaml *.yml *.toml *.txt *.md .gitignore
+global-exclude *.pyc *.pyo

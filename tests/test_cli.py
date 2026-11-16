@@ -60,7 +60,7 @@ def test_cli_audit_writes_markdown_and_json(python_repo: Path, tmp_path: Path, c
     data = json.loads(json_path.read_text(encoding="utf-8"))
     assert markdown_path.stat().st_size > 0
     assert json_path.stat().st_size > 0
-    assert "# RepoMind Repository Audit" in markdown
+    assert "# Lehraz Atlas Free Repository Audit" in markdown
     sections = [
         "## Executive Summary",
         "## Architecture Detected",

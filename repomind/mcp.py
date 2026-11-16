@@ -12,17 +12,18 @@ from repomind.test_impact import TestImpactLimits
 ToolHandler = Callable[..., dict[str, Any]]
 
 
-INSTRUCTIONS = """RepoMind is a local-first static-analysis discovery accelerator.
+INSTRUCTIONS = """Lehraz Atlas Free (formerly RepoMind) is a local-first static-analysis discovery accelerator.
 Use repomind_context at level 1 first, inspect actual source before edits, and ask
 for deeper symbols, callers, dependencies, impact, or snippets only when needed."""
 
 
-def create_server(debug: bool = False) -> MCPServer:
+def create_server(debug: bool = False, *, atlas: bool = False) -> MCPServer:
+    prefix = "atlas" if atlas else "repomind"
     server = MCPServer(
-        name="repomind",
-        title="RepoMind",
+        name="lehraz-atlas" if atlas else "repomind",
+        title="Lehraz Atlas Free",
         version=__version__,
-        instructions=INSTRUCTIONS,
+        instructions=INSTRUCTIONS.replace("repomind_context", f"{prefix}_context"),
         debug=debug,
     )
 
@@ -32,12 +33,12 @@ def create_server(debug: bool = False) -> MCPServer:
         except Exception as exc:  # MCP tool boundary: convert normal failures to structured data.
             return services.error_payload(exc, debug=debug)
 
-    @server.tool()
+    @server.tool(name=f"{prefix}_status")
     def repomind_status(repository: str) -> dict[str, Any]:
         """Check whether a repository has a valid RepoMind index."""
         return safe(services.status, repository)
 
-    @server.tool()
+    @server.tool(name=f"{prefix}_context")
     def repomind_context(
         repository: str,
         task: str,
@@ -48,28 +49,28 @@ def create_server(debug: bool = False) -> MCPServer:
         """Return structured task-aware context from the existing RepoMind retriever."""
         return safe(services.context, repository, task, budget, level, explain)
 
-    @server.tool()
+    @server.tool(name=f"{prefix}_symbol")
     def repomind_symbol(repository: str, symbol: str) -> dict[str, Any]:
         """Return matching symbols with file, location, signature, type, and relationships."""
         return safe(services.symbol, repository, symbol)
 
-    @server.tool()
+    @server.tool(name=f"{prefix}_callers")
     def repomind_callers(repository: str, symbol: str) -> dict[str, Any]:
         """Return resolvable incoming call relationships for a symbol."""
         return safe(services.symbol_callers, repository, symbol)
 
-    @server.tool()
+    @server.tool(name=f"{prefix}_dependencies")
     def repomind_dependencies(repository: str, target: str) -> dict[str, Any]:
         """Return outgoing structural dependencies for a file or symbol target."""
         return safe(services.structural_dependencies, repository, target)
 
-    @server.tool()
+    @server.tool(name=f"{prefix}_impact")
     def repomind_impact(repository: str, target: str) -> dict[str, Any]:
         """Estimate dependents, affected tests, routes, and UI impact for a target."""
         return safe(services.change_impact, repository, target)
 
 
-    @server.tool()
+    @server.tool(name=f"{prefix}_test_impact")
     def repomind_test_impact(
         repository: str,
         changed_files: list[str] | None = None,
@@ -127,14 +128,14 @@ def create_server(debug: bool = False) -> MCPServer:
             limits=limits,
         )
 
-    test_impact_tool = server._tool_manager.get_tool("repomind_test_impact")
+    test_impact_tool = server._tool_manager.get_tool(f"{prefix}_test_impact")
     if test_impact_tool is not None:
         argument_model = test_impact_tool.fn_metadata.arg_model
         argument_model.model_config["extra"] = "forbid"
         argument_model.model_rebuild(force=True)
         test_impact_tool.parameters = argument_model.model_json_schema(by_alias=True)
 
-    @server.tool()
+    @server.tool(name=f"{prefix}_snippets")
     def repomind_snippets(
         repository: str,
         target: str,
@@ -144,12 +145,12 @@ def create_server(debug: bool = False) -> MCPServer:
         """Return bounded source snippets for an indexed symbol or file target."""
         return safe(services.bounded_snippets, repository, target, line_bound, token_bound)
 
-    @server.tool()
+    @server.tool(name=f"{prefix}_refresh")
     def repomind_refresh(repository: str) -> dict[str, Any]:
         """Refresh changed files incrementally and return index health."""
         return safe(services.refresh, repository)
 
-    @server.tool()
+    @server.tool(name=f"{prefix}_map")
     def repomind_map(
         repository: str,
         depth: int | None = None,
@@ -158,12 +159,12 @@ def create_server(debug: bool = False) -> MCPServer:
         """Return the compact repository map."""
         return safe(services.repository_map, repository, depth, include_symbols)
 
-    @server.tool()
+    @server.tool(name=f"{prefix}_stats")
     def repomind_stats(repository: str) -> dict[str, Any]:
         """Return repository intelligence metrics from the current index."""
         return safe(services.stats, repository)
 
-    @server.tool()
+    @server.tool(name=f"{prefix}_memory")
     def repomind_memory(
         repository: str,
         task: str | None = None,
@@ -179,8 +180,8 @@ def create_server(debug: bool = False) -> MCPServer:
     return server
 
 
-def run_stdio(debug: bool = False) -> None:
-    create_server(debug=debug).run("stdio")
+def run_stdio(debug: bool = False, *, atlas: bool = False) -> None:
+    create_server(debug=debug, atlas=atlas).run("stdio")
 
 
 if __name__ == "__main__":

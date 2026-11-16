@@ -1,13 +1,32 @@
-# RepoMind
+# Lehraz Atlas Free
 
 Local-first repository intelligence for developers.
 
 Index once. Understand everywhere.
 
-RepoMind builds a persistent local index of a codebase, keeps it fresh as files change, and returns task-aware context for focused discovery. It is not a code editor, hosted service, embedding store, or replacement for reading source files. It helps developers and connected tools identify relevant files, relationships, facts, and risks before changes are made.
+Lehraz Atlas Free is the Apache-2.0 open-source product formerly called **RepoMind**,
+under the Lehraz parent brand. This branch is an **unpublished compatibility
+implementation**; its inherited `2.0.0b14` development metadata is not release
+approval. b14 retains its agreed Go language intelligence scope. The latest public
+wheel remains RepoMind b13 and retains
+its original filename, checksum and output. No repository rename or PyPI publication
+has occurred.
+
+Existing users keep `repomind`, `python -m repomind`, all 12 `repomind_*` MCP tools,
+`.repomind` indexes/configuration and existing JSON schemas. The candidate also adds
+`lehraz-atlas` with Lehraz Atlas help and an opt-in `lehraz-atlas mcp` server
+exposing exactly 12 `atlas_*` tools. `repomind mcp` and `python -m repomind mcp`
+retain the `repomind` server and exactly 12 legacy `repomind_*` tools. Each server
+uses one namespace and shares the same analysis implementation. Existing MCP
+registrations are not automatically edited. b13 does not include the new command.
+No legacy-interface deprecation is scheduled.
+See the [compatibility and candidate plan](docs/LEHRAZ_ATLAS_PHASE1.md).
+Lehraz Atlas Pro is future work, separate from the existing Free functionality.
+
+Lehraz Atlas Free builds a persistent local index of a codebase, keeps it fresh as files change, and returns task-aware context for focused discovery. It is not a code editor, hosted service, embedding store, or replacement for reading source files. It helps developers and connected tools identify relevant files, relationships, facts, and risks before changes are made.
 
 **Public beta downloads:** use only assets attached to this repository's
-[GitHub Releases](https://github.com/raazlehra/Repomind/releases) page. RepoMind releases are
+[GitHub Releases](https://github.com/raazlehra/Repomind/releases) page. Lehraz Atlas Free releases are
 prerelease/hardening betas, not stable v2.0.0. Follow the
 [installation guide](docs/INSTALLATION.md), and do not use plain `pip install repomind`, because
 that PyPI distribution name belongs to another project.
@@ -36,24 +55,24 @@ Key capabilities:
 - MCP support
 - No cloud upload required
 
-RepoMind's core analysis runs locally. During normal analysis, RepoMind itself does not execute
+Lehraz Atlas Free's core analysis runs locally. During normal analysis, Lehraz Atlas Free itself does not execute
 repository source, upload code, call external AI APIs, or send telemetry. An MCP client or coding
-agent can separately transmit requested RepoMind metadata or snippets to its configured provider;
+agent can separately transmit requested Lehraz Atlas Free metadata or snippets to its configured provider;
 that client and provider remain separate trust boundaries.
 
-## What RepoMind Is
+## What Lehraz Atlas Free Is
 
-RepoMind is a portable, local repository intelligence layer for developers and compatible tools. It indexes files, symbols, imports, routes, dependency edges, architecture facts, Git working-tree state, and evidence-backed repository memory into a local SQLite index under `.repomind/`.
+Lehraz Atlas Free is a portable, local repository intelligence layer for developers and compatible tools. It indexes files, symbols, imports, routes, dependency edges, architecture facts, Git working-tree state, and evidence-backed repository memory into a local SQLite index under `.repomind/`.
 
-Developers and compatible tools can query RepoMind through the CLI or MCP to get a compact ContextPack for a task, inspect dependency and caller relationships, retrieve bounded snippets, and reuse durable repository facts with provenance.
+Developers and compatible tools can query Lehraz Atlas Free through the CLI or MCP to get a compact ContextPack for a task, inspect dependency and caller relationships, retrieve bounded snippets, and reuse durable repository facts with provenance.
 
-RepoMind output is guidance for discovery. The working tree remains authoritative, and source code should be inspected before making edits.
+Lehraz Atlas Free output is guidance for discovery. The working tree remains authoritative, and source code should be inspected before making edits.
 
-## Why RepoMind
+## Why Lehraz Atlas Free
 
 Large repositories require repeated discovery of the same structure: where tests live, which files define routes, what symbols call each other, whether saved changes made the index stale, and which files are likely relevant to a task.
 
-RepoMind focuses on reusable, local, deterministic signals:
+Lehraz Atlas Free focuses on reusable, local, deterministic signals:
 
 - changed files are detected by hash;
 - unchanged files are not reparsed during normal refresh;
@@ -152,7 +171,7 @@ All commands above exist in the current CLI. Most read commands accept `--format
 
 ## How It Works
 
-RepoMind separates static repository discovery from task-time retrieval:
+Lehraz Atlas Free separates static repository discovery from task-time retrieval:
 
 ```mermaid
 flowchart LR
@@ -233,7 +252,7 @@ limit, and whether it was truncated. JSON uses the stable
 `repomind.test-impact.v1` schema and repository-relative paths by default.
 
 Test-impact is strictly analysis-only. The CLI and MCP return recommended command strings,
-argument arrays, and repository-relative working directories as data; RepoMind never runs
+argument arrays, and repository-relative working directories as data; Lehraz Atlas Free never runs
 those commands or repository test code. A developer or trusted automation must separately review,
 approve, and execute recommendations in an appropriately trusted environment.
 
@@ -253,13 +272,13 @@ reproducible synthetic example and guidance on interpreting evidence and limits.
 
 ## Automatic Freshness
 
-RepoMind read commands check saved working-tree changes before reading the index:
+Lehraz Atlas Free read commands check saved working-tree changes before reading the index:
 
 ```text
 save source -> retrieval request -> freshness check -> incremental refresh if needed -> current context
 ```
 
-This applies to `context`, `map`, `symbol`, `callers`, `dependencies`, `impact`, `test-impact`, `snippets`, and MCP/service equivalents. Saved changes can be reflected without a Git commit, manual refresh, watch mode, or RepoMind restart.
+This applies to `context`, `map`, `symbol`, `callers`, `dependencies`, `impact`, `test-impact`, `snippets`, and MCP/service equivalents. Saved changes can be reflected without a Git commit, manual refresh, watch mode, or Lehraz Atlas Free restart.
 
 Watch mode is optional and proactive. It is useful when you want the index updated soon after filesystem events, but retrieval correctness does not depend on it.
 
@@ -295,7 +314,7 @@ Token counts are local character-based estimates. They are not provider tokenize
 
 Repository Memory stores durable local facts about a repository. It is evidence-backed, freshness-aware, and agent-neutral. It is not generic chat memory, embeddings, generated architecture prose, a secret store, or a hosted profile.
 
-Automatic memory is conservative. RepoMind persists facts only when they come from deterministic indexed evidence such as manifests, configuration, route/test layout, architecture facts with file evidence, and strong source markers. Automatic records store source paths, optional source symbols, an evidence hash, category, confidence, timestamps, source type, and status.
+Automatic memory is conservative. Lehraz Atlas Free persists facts only when they come from deterministic indexed evidence such as manifests, configuration, route/test layout, architecture facts with file evidence, and strong source markers. Automatic records store source paths, optional source symbols, an evidence hash, category, confidence, timestamps, source type, and status.
 
 Manual memory is explicit and marked `manual`:
 
@@ -334,7 +353,7 @@ Budget fitting removes lower-priority records first instead of blindly truncatin
 
 ## Dependency / Impact Analysis
 
-RepoMind stores conservative static relationships for imports, calls, inheritance, routes, and test targets. Relationship confidence is stored with evidence so unresolved or uncertain references do not become invented edges.
+Lehraz Atlas Free stores conservative static relationships for imports, calls, inheritance, routes, and test targets. Relationship confidence is stored with evidence so unresolved or uncertain references do not become invented edges.
 
 ```bash
 repomind callers AuthService.login
@@ -362,7 +381,7 @@ Additional basic file recognition:
 
 ## MCP Integration
 
-RepoMind can run as a local MCP server for coding agents:
+Lehraz Atlas Free can run as a local MCP server for coding agents:
 
 ```powershell
 & "C:\path\to\repomind-venv\Scripts\python.exe" -m repomind mcp
@@ -407,14 +426,14 @@ Historical beta.8 validation reported 12/12 expected benchmark files retrieved w
 
 ## Privacy / Security
 
-RepoMind is local-first by default:
+Lehraz Atlas Free is local-first by default:
 
 - no repository source execution by test-impact; it returns command recommendations as data only;
-- no network requests by RepoMind core during normal indexing or retrieval;
-- no cloud uploads, telemetry, or external AI API path in RepoMind core.
+- no network requests by Lehraz Atlas Free core during normal indexing or retrieval;
+- no cloud uploads, telemetry, or external AI API path in Lehraz Atlas Free core.
 
 MCP clients and coding agents are separate applications. They may send metadata, command data,
-or snippets requested from RepoMind to their configured model/provider. Review the client's
+or snippets requested from Lehraz Atlas Free to their configured model/provider. Review the client's
 configuration and provider privacy terms before exposing a sensitive repository.
 
 The SQLite index may contain repository paths, symbol names, signatures, short docstrings,
@@ -428,27 +447,27 @@ See [SECURITY.md](SECURITY.md).
 
 ## Limitations
 
-- RepoMind is not a coding agent and does not edit code.
+- Lehraz Atlas Free is not a coding agent and does not edit code.
 - Static analysis can miss dynamic language behavior, reflection, runtime-generated imports, dependency injection, and framework magic.
 - Test-impact recommendations are evidence-based suggestions and are not guaranteed to find every relevant test or risk.
 - Fixture-reference analysis requires the optional Tree-sitter backend, accepts only constrained source-anchored paths, and does not follow arbitrary wrapper-based data flow.
 - Structural test relationships do not establish runtime test coverage; coverage remains unknown unless provided separately.
 - Confidence labels are heuristic summaries of available static evidence, not calibrated probabilities.
 - Truncated collections and lower-bound counts must be interpreted using the report's completeness and truncation metadata.
-- RepoMind does not provide security certification or replace a dedicated security review.
-- Agent-generated conclusions based on RepoMind output still require developer review.
+- Lehraz Atlas Free does not provide security certification or replace a dedicated security review.
+- Agent-generated conclusions based on Lehraz Atlas Free output still require developer review.
 - JavaScript and TypeScript extraction is deterministic structural extraction, not a full compiler frontend.
 - Fallback-language extraction is intentionally shallow.
 - Architecture detection reports manifest/config evidence and can be incomplete.
 - Repository Memory is conservative and may omit useful facts unless they can be tied to strong indexed evidence or added manually.
 - Automatic memory can require validation after evidence changes.
 - Approximate token counts are not provider tokenizer or billing values.
-- RepoMind does not guarantee AI credit savings, token savings, or performance outcomes across arbitrary repositories.
+- Lehraz Atlas Free does not guarantee AI credit savings, token savings, or performance outcomes across arbitrary repositories.
 - `.repomind/` indexes are local caches and should not normally be committed.
 
 ## License
 
-RepoMind is licensed under the [Apache License 2.0](LICENSE).
+Lehraz Atlas Free is licensed under the [Apache License 2.0](LICENSE).
 
 ## Roadmap
 
@@ -458,7 +477,7 @@ The roadmap does not require embeddings, external LLM calls, cloud APIs, vector 
 
 ## Contributing / Beta Testing
 
-RepoMind is in beta. Useful feedback includes:
+Lehraz Atlas Free is in beta. Useful feedback includes:
 
 - repositories where retrieval selects confusing files;
 - missing static relationships or language constructs;

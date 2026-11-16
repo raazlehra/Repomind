@@ -927,14 +927,14 @@ def render_test_impact(
             rendered = _serialize_report(report, "pretty_json")
         return rendered
     lines = [
-        "# RepoMind Test Impact",
+        "# Lehraz Atlas Free Test Impact",
         "",
         f"Repository: {report['repository']}",
         f"Change source: {report['change_source']}",
         f"Analysis status: {report['analysis_status']}",
         f"Overall confidence: {report['confidence']}",
         "",
-        "RepoMind recommends commands as data only and never executes repository code. "
+        "Lehraz Atlas Free recommends commands as data only and never executes repository code. "
         "Codex, CI, or a developer must separately approve and run any command.",
         "",
         "Test discovery and static relationship evidence do not prove behavioral coverage. "

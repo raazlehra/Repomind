@@ -438,7 +438,7 @@ def test_cli_rejects_invalid_limits(
     )
 
     assert result == 2
-    assert "RepoMind error:" in capsys.readouterr().err
+    assert "Lehraz Atlas Free error:" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize(

@@ -1,6 +1,6 @@
-# RepoMind architecture
+# Lehraz Atlas Free architecture
 
-RepoMind separates repository discovery, structural extraction, persistent graph storage, deterministic ranking, and presentation. Repository content is always treated as untrusted static input.
+Lehraz Atlas Free separates repository discovery, structural extraction, persistent graph storage, deterministic ranking, and presentation. Repository content is always treated as untrusted static input.
 
 ## System flow
 
@@ -142,7 +142,7 @@ missing deterministic fact or evidence -> stale
 manual memory            -> manual
 ```
 
-`repomind memory validate` reruns deterministic extraction and can confirm changed facts when they still hold. If RepoMind cannot prove a fact, it marks uncertainty instead of inventing a replacement.
+`repomind memory validate` reruns deterministic extraction and can confirm changed facts when they still hold. If Lehraz Atlas Free cannot prove a fact, it marks uncertainty instead of inventing a replacement.
 
 ## Deterministic ranking
 
@@ -184,17 +184,17 @@ Memory relevance contributes a small bounded ranking component and a compact Con
 
 ## Watcher
 
-With the `watch` extra, watchdog emits file events. RepoMind ignores its own index and Git internals, debounces an event burst, and runs incremental refresh. Without watchdog, `watch` returns an actionable installation error rather than continuously rescanning the whole repository; `doctor` reports watcher availability.
+With the `watch` extra, watchdog emits file events. Lehraz Atlas Free ignores its own index and Git internals, debounces an event burst, and runs incremental refresh. Without watchdog, `watch` returns an actionable installation error rather than continuously rescanning the whole repository; `doctor` reports watcher availability.
 
 ## Git integration
 
-Git calls use argument arrays (`shell=False`), a timeout, and read-only commands: `rev-parse`, `branch --show-current`, and `status --porcelain`. RepoMind never commits, pushes, checks out, resets, stashes, or changes branches.
+Git calls use argument arrays (`shell=False`), a timeout, and read-only commands: `rev-parse`, `branch --show-current`, and `status --porcelain`. Lehraz Atlas Free never commits, pushes, checks out, resets, stashes, or changes branches.
 
 ## Agent integration
 
 `install-codex` writes a project-local `.codex/skills/repomind/SKILL.md` with managed markers. It appends a delimited section to `AGENTS.md` without replacing existing content. Both operations are idempotent; an unmanaged existing skill is preserved.
 
-The integration directs agents to use RepoMind for discovery, not as source authority.
+The integration directs agents to use Lehraz Atlas Free for discovery, not as source authority.
 
 ## Extension seams
 

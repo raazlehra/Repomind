@@ -140,5 +140,5 @@ def test_cli_context_explain_and_stats_json(python_repo: Path, capsys) -> None: 
 
     assert main(["stats", "-C", str(python_repo), "--format", "json"]) == 0
     stats = json.loads(capsys.readouterr().out)
-    assert stats["title"] == "RepoMind Repository Intelligence"
+    assert stats["title"] == "Lehraz Atlas Free Repository Intelligence"
     assert stats["estimated_repository_tokens"] > 0

@@ -221,7 +221,7 @@ def test_markdown_and_json_rendering(tmp_path: Path) -> None:
         report = analyze_test_impact(db, ["pkg/app.go", "pkg/app_test.go"])
         # Markdown rendering
         md = render_test_impact(report, "markdown")
-        assert "# RepoMind Test Impact" in md
+        assert "# Lehraz Atlas Free Test Impact" in md
         assert "## Warnings" in md
         assert "Go" in md
         assert "Coverage is **unknown**" in md
